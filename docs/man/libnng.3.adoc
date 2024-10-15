@@ -26,18 +26,21 @@ intended to solve common communication problems in distributed applications.
 
 It provides a C language API.
 
+<!--
 === Common Functions
 
 The following common functions exist in _libnng_.
 
 |===
-|xref:nng_alloc.3.adoc[nng_alloc()]|allocate memory
-|xref:nng_free.3.adoc[nng_free()]|free memory
-|xref:nng_strdup.3.adoc[nng_strdup()]|duplicate string
-|xref:nng_strerror.3.adoc[nng_strerror()]|return an error description
-|xref:nng_strfree.3.adoc[nng_strfree()]|free string
-|xref:nng_version.3.adoc[nng_version()]|report library version
+// |xref:nng_alloc.3.adoc[nng_alloc()]|allocate memory
+// |xref:nng_free.3.adoc[nng_free()]|free memory
+// |xref:nng_strdup.3.adoc[nng_strdup()]|duplicate string
+// |xref:nng_strerror.3.adoc[nng_strerror()]|return an error description
+// |xref:nng_strfree.3.adoc[nng_strfree()]|free string
+// |xref:nng_version.3.adoc[nng_version()]|report library version
 |===
+
+-->
 
 === Socket Functions
 
@@ -46,11 +49,10 @@ The following functions operate on sockets.
 |===
 |xref:nng_close.3.adoc[nng_close()]|close socket
 |xref:nng_dial.3.adoc[nng_dial()]|create and start dialer
-|xref:nng_getopt.3.adoc[nng_getopt()]|get socket option
+|xref:nng_get.3.adoc[nng_get()]|get socket option
 |xref:nng_listen.3.adoc[nng_listen()]|create and start listener
 |xref:nng_recv.3.adoc[nng_recv()]|receive data
 |xref:nng_send.3.adoc[nng_send()]|send data
-|xref:nng_setopt.3.adoc[nng_setopt()]|set socket option
 |xref:nng_socket_get.3.adoc[nng_socket_get()]|get socket option
 |xref:nng_socket_id.3.adoc[nng_socket_id()]|get numeric socket identifier
 |xref:nng_socket_set.3.adoc[nng_socket_set()]|set socket option
@@ -66,24 +68,19 @@ Listeners accept incoming connection requests, and dialers make them.
 |xref:nng_dialer_close.3.adoc[nng_dialer_close()]|close dialer
 |xref:nng_dialer_create.3.adoc[nng_dialer_create()]|create dialer
 |xref:nng_dialer_get.3.adoc[nng_dialer_get()]|get dialer option
-|xref:nng_dialer_getopt.3.adoc[nng_dialer_getopt()]|get dialer option
 |xref:nng_dialer_id.3.adoc[nng_dialer_id()]|get numeric dialer identifier
 |xref:nng_dialer_set.3.adoc[nng_dialer_set()]|set dialer option
-|xref:nng_dialer_setopt.3.adoc[nng_dialer_setopt()]|set dialer option
 |xref:nng_dialer_start.3.adoc[nng_dialer_start()]|start dialer
 |xref:nng_listen.3.adoc[nng_listen()]|create and start listener
 |xref:nng_listener_close.3.adoc[nng_listener_close()]|close listener
 |xref:nng_listener_create.3.adoc[nng_listener_create()]|create listener
 |xref:nng_listener_get.3.adoc[nng_listener_get()]|get listener option
-|xref:nng_listener_getopt.3.adoc[nng_listener_getopt()]|get listener option
 |xref:nng_listener_id.3.adoc[nng_listener_id()]|get numeric listener identifier
 |xref:nng_listener_set.3.adoc[nng_listener_set()]|set listener option
-|xref:nng_listener_setopt.3.adoc[nng_listener_setopt()]|set listener option
 |xref:nng_listener_start.3.adoc[nng_listener_start()]|start listener
 |xref:nng_pipe_close.3.adoc[nng_pipe_close()]|close pipe
 |xref:nng_pipe_dialer.3.adoc[nng_pipe_dialer()]|return dialer that created pipe
 |xref:nng_pipe_get.3.adoc[nng_pipe_get()]|get pipe option
-|xref:nng_pipe_getopt.3.adoc[nng_pipe_getopt()]|get pipe option
 |xref:nng_pipe_id.3.adoc[nng_pipe_id()]|get numeric pipe identifier
 |xref:nng_pipe_listener.3.adoc[nng_pipe_listener()]|return listener that created pipe
 |xref:nng_pipe_notify.3.adoc[nng_pipe_notify()]|register pipe notification callback
@@ -101,21 +98,21 @@ user-payload and the header carries protocol specific header information.
 Most applications will only interact with the body.
 
 |===
-|xref:nng_msg_alloc.3.adoc[nng_msg_alloc()]|allocate a message
-|xref:nng_msg_append.3.adoc[nng_msg_append()]|append to message body
-|xref:nng_msg_body.3.adoc[nng_msg_body()]|return message body
-|xref:nng_msg_capacity.3.adoc[nng_msg_capacity()]|return capacity allocated for message body
-|xref:nng_msg_chop.3.adoc[nng_msg_chop()]|remove data from end of message body
-|xref:nng_msg_clear.3.adoc[nng_msg_clear()]|clear message body
-|xref:nng_msg_dup.3.adoc[nng_msg_dup()]|duplicate a message
-|xref:nng_msg_free.3.adoc[nng_msg_free()]|free a message
-|xref:nng_msg_get_pipe.3.adoc[nng_msg_get_pipe()]|get pipe for message
-|xref:nng_msg_insert.3.adoc[nng_msg_insert()]|prepend to message body
-|xref:nng_msg_len.3.adoc[nng_msg_len()]|return the message body length
-|xref:nng_msg_realloc.3.adoc[nng_msg_realloc()]|reallocate a message
-|xref:nng_msg_reserve.3.adoc[nng_msg_reserve()]|reserve storage for message body
-|xref:nng_msg_set_pipe.3.adoc[nng_msg_set_pipe()]|set pipe for message
-|xref:nng_msg_trim.3.adoc[nng_msg_trim()]|remove data from start of message body
+// |xref:nng_msg_alloc.3.adoc[nng_msg_alloc()]|allocate a message
+// |xref:nng_msg_append.3.adoc[nng_msg_append()]|append to message body
+// |xref:nng_msg_body.3.adoc[nng_msg_body()]|return message body
+// |xref:nng_msg_capacity.3.adoc[nng_msg_capacity()]|return capacity allocated for message body
+// |xref:nng_msg_chop.3.adoc[nng_msg_chop()]|remove data from end of message body
+// |xref:nng_msg_clear.3.adoc[nng_msg_clear()]|clear message body
+// |xref:nng_msg_dup.3.adoc[nng_msg_dup()]|duplicate a message
+// |xref:nng_msg_free.3.adoc[nng_msg_free()]|free a message
+// |xref:nng_msg_get_pipe.3.adoc[nng_msg_get_pipe()]|get pipe for message
+// |xref:nng_msg_insert.3.adoc[nng_msg_insert()]|prepend to message body
+// |xref:nng_msg_len.3.adoc[nng_msg_len()]|return the message body length
+// |xref:nng_msg_realloc.3.adoc[nng_msg_realloc()]|reallocate a message
+// |xref:nng_msg_reserve.3.adoc[nng_msg_reserve()]|reserve storage for message body
+// |xref:nng_msg_set_pipe.3.adoc[nng_msg_set_pipe()]|set pipe for message
+// |xref:nng_msg_trim.3.adoc[nng_msg_trim()]|remove data from start of message body
 |xref:nng_recvmsg.3.adoc[nng_recvmsg()]|receive a message
 |xref:nng_sendmsg.3.adoc[nng_sendmsg()]|send a message
 |===
@@ -204,20 +201,6 @@ The following functions are used to construct a socket with a specific protocol:
 |xref:nng_surveyor_open.3.adoc[nng_surveyor_open()]|open a surveyor socket
 |===
 
-=== Transports
-
-The following functions are used to register a transport for use.
-
-|===
-| xref:nng_inproc_register.3.adoc[nng_inproc_register()]|register inproc transport
-| xref:nng_ipc_register.3.adoc[nng_ipc_register()]|register IPC transport
-| xref:nng_tcp_register.3.adoc[nng_tcp_register()]|register TCP transport
-| xref:nng_tls_register.3.adoc[nng_tls_register()]|register TLS transport
-| xref:nng_ws_register.3.adoc[nng_ws_register()]|register WebSocket transport
-| xref:nng_wss_register.3.adoc[nng_wss_register()]|register WebSocket Secure transport
-| xref:nng_zt_register.3.adoc[nng_zt_register()]|register ZeroTier transport
-|===
-
 === Protocol Contexts
 
 The following functions are useful to separate the protocol processing
@@ -228,7 +211,6 @@ concurrent applications.
 |===
 |xref:nng_ctx_close.3.adoc[nng_ctx_close()]|close context
 |xref:nng_ctx_get.3.adoc[nng_ctx_get()]|get context option
-|xref:nng_ctx_getopt.3.adoc[nng_ctx_getopt()]|get context option
 |xref:nng_ctx_id.3.adoc[nng_ctx_id()]|get numeric context identifier
 |xref:nng_ctx_open.3.adoc[nng_ctx_open()]|create context
 |xref:nng_ctx_recv.3.adoc[nng_ctx_recv()]|receive message using context asynchronously
@@ -236,7 +218,6 @@ concurrent applications.
 |xref:nng_ctx_send.3.adoc[nng_ctx_send()]|send message using context asynchronously
 |xref:nng_ctx_sendmsg.3.adoc[nng_ctx_sendmsg()]|send a message using context
 |xref:nng_ctx_set.3.adoc[nng_ctx_set()]|set context option
-|xref:nng_ctx_setopt.3.adoc[nng_ctx_setopt()]|set context option
 |===
 
 === Devices, Relays
@@ -272,55 +253,57 @@ to observe program behaviors and as an aid in troubleshooting.
 |xref:nng_stats_get.3.adoc[nng_stats_get()]|get statistics
 |===
 
-=== URL Object
+// === URL Object
 
-Common functionality is supplied for parsing and handling
-universal resource locators (URLS).
+// Common functionality is supplied for parsing and handling
+// universal resource locators (URLS).
 
-|===
-|xref:nng_url_clone.3.adoc[nng_url_clone()]|clone URL structure
-|xref:nng_url_free.3.adoc[nng_url_free()]|free URL structure
-|xref:nng_url_parse.3.adoc[nng_url_parse()]|create URL structure from string
-|===
+// |===
+// |xref:nng_url_clone.3.adoc[nng_url_clone()]|clone URL structure
+// |xref:nng_url_free.3.adoc[nng_url_free()]|free URL structure
+// |xref:nng_url_parse.3.adoc[nng_url_parse()]|create URL structure from string
+// |===
 
-=== Logging Support
+// === Logging Support
 
-Common functionality for message logging.
+// Common functionality for message logging.
 
-|===
-|xref:nng_log.3.adoc[nng_log()]|log a message
-|xref:nng_log_facility.3.adoc[nng_log_set_facility()]|set log facility
-|xref:nng_log_level.3.adoc[nng_log_set_level()]|set log level
-|xref:nng_log_logger.3.adoc[nng_log_set_logger()]|set logging handler
-|===
+// |===
+// |xref:nng_log.3.adoc[nng_log()]|log a message
+// |xref:nng_log_facility.3.adoc[nng_log_set_facility()]|set log facility
+// |xref:nng_log_level.3.adoc[nng_log_set_level()]|set log level
+// |xref:nng_log_logger.3.adoc[nng_log_set_logger()]|set logging handler
+// |===
 
 === Supplemental API
 
-These supplemental functions are not intrinsic to building
-network applications with _NNG_, but they are made available
-as a convenience to aid in creating portable applications.
+NOTE: All these functions have been moved to new mdbook docs.
 
-|===
-|xref:nng_clock.3supp.adoc[nng_clock()]|get time
-|xref:nng_cv_alloc.3supp.adoc[nng_cv_alloc()]|allocate condition variable
-|xref:nng_cv_free.3supp.adoc[nng_cv_free()]|free condition variable
-|xref:nng_cv_until.3supp.adoc[nng_cv_until()]|wait for condition or timeout
-|xref:nng_cv_wait.3supp.adoc[nng_cv_wait()]|wait for condition
-|xref:nng_cv_wake.3supp.adoc[nng_cv_wake()]|wake all waiters
-|xref:nng_cv_wake1.3supp.adoc[nng_cv_wake1()]|wake one waiter
-|xref:nng_id_map.3supp.adoc[nng_id_map]|identifier based mapping table
-|xref:nng_msleep.3supp.adoc[nng_msleep()]|sleep for milliseconds
-|xref:nng_mtx_alloc.3supp.adoc[nng_mtx_alloc()]|allocate mutex
-|xref:nng_mtx_free.3supp.adoc[nng_mtx_free()]|free mutex
-|xref:nng_mtx_lock.3supp.adoc[nng_mtx_lock()]|lock mutex
-|xref:nng_mtx_unlock.3supp.adoc[nng_mtx_unlock()]|unlock mutex
-|xref:nng_opts_parse.3supp.adoc[nng_opts_parse()]|parse command line options
-|xref:nng_random.3supp.adoc[nng_random()]|get random number
-|xref:nng_socket_pair.3supp.adoc[nng_socket_pair()]|create connected pair of BSD sockets
-|xref:nng_thread_create.3supp.adoc[nng_thread_create()]|create thread
-|xref:nng_thread_destroy.3supp.adoc[nng_thread_destroy()]|reap thread
-|xref:nng_thread_set_name.3supp.adoc[nng_thread_set_name()]|set thread name
-|===
+// These supplemental functions are not intrinsic to building
+// network applications with _NNG_, but they are made available
+// as a convenience to aid in creating portable applications.
+//
+// |===
+// |xref:nng_clock.3supp.adoc[nng_clock()]|get time
+// |xref:nng_cv_alloc.3supp.adoc[nng_cv_alloc()]|allocate condition variable
+// |xref:nng_cv_free.3supp.adoc[nng_cv_free()]|free condition variable
+// |xref:nng_cv_until.3supp.adoc[nng_cv_until()]|wait for condition or timeout
+// |xref:nng_cv_wait.3supp.adoc[nng_cv_wait()]|wait for condition
+// |xref:nng_cv_wake.3supp.adoc[nng_cv_wake()]|wake all waiters
+// |xref:nng_cv_wake1.3supp.adoc[nng_cv_wake1()]|wake one waiter
+// |xref:nng_id_map.3supp.adoc[nng_id_map]|identifier based mapping table
+// |xref:nng_msleep.3supp.adoc[nng_msleep()]|sleep for milliseconds
+// |xref:nng_mtx_alloc.3supp.adoc[nng_mtx_alloc()]|allocate mutex
+// |xref:nng_mtx_free.3supp.adoc[nng_mtx_free()]|free mutex
+// |xref:nng_mtx_lock.3supp.adoc[nng_mtx_lock()]|lock mutex
+// |xref:nng_mtx_unlock.3supp.adoc[nng_mtx_unlock()]|unlock mutex
+// |xref:nng_opts_parse.3supp.adoc[nng_opts_parse()]|parse command line options
+// |xref:nng_random.3supp.adoc[nng_random()]|get random number
+// |xref:nng_socket_pair.3supp.adoc[nng_socket_pair()]|create connected pair of BSD sockets
+// |xref:nng_thread_create.3supp.adoc[nng_thread_create()]|create thread
+// |xref:nng_thread_destroy.3supp.adoc[nng_thread_destroy()]|reap thread
+// |xref:nng_thread_set_name.3supp.adoc[nng_thread_set_name()]|set thread name
+// |===
 
 === Byte Streams
 
@@ -481,5 +464,4 @@ with TLS support.
 == SEE ALSO
 
 [.text-left]
-xref:nng_compat.3compat.adoc[nng_compat(3compat)],
 xref:nng.7.adoc[nng(7)]
