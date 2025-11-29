@@ -6,18 +6,18 @@
 // found online at https://opensource.org/licenses/MIT.
 //
 
-#include "core/aio.h"
-#include "core/defs.h"
-#include "core/idhash.h"
-#include "core/message.h"
-#include "core/nng_impl.h"
-#include "core/options.h"
-#include "core/pipe.h"
-#include "core/platform.h"
-#include "core/socket.h"
-#include "core/stats.h"
+#include "../../../core/aio.h"
+#include "../../../core/defs.h"
+#include "../../../core/idhash.h"
+#include "../../../core/message.h"
+#include "../../../core/nng_impl.h"
+#include "../../../core/options.h"
+#include "../../../core/pipe.h"
+#include "../../../core/platform.h"
+#include "../../../core/socket.h"
+#include "../../../core/stats.h"
+#include "../../../supplemental/tls/tls_common.h"
 #include "nng/nng.h"
-#include "supplemental/tls/tls_common.h"
 
 #include <string.h>
 
@@ -215,8 +215,6 @@ static void
 dtls_bio_recv_done(dtls_pipe *p)
 {
 	nng_aio *aio;
-	uint8_t *ptr;
-	size_t   resid;
 	nni_msg *msg;
 
 	while ((!nni_lmq_empty(&p->rx_mq)) &&
@@ -225,22 +223,7 @@ dtls_bio_recv_done(dtls_pipe *p)
 		nni_aio_list_remove(aio);
 		nni_lmq_get(&p->rx_mq, &msg);
 
-		// assumption we only have a body, because we don't bother to
-		// fill in the header for raw UDP.
-
-		resid = nni_msg_len(msg);
-		ptr   = nni_msg_body(msg);
-
-		for (unsigned i = 0; i < aio->a_nio && resid > 0; i++) {
-			size_t num = resid > aio->a_iov[i].iov_len
-			    ? aio->a_iov[i].iov_len
-			    : resid;
-			memcpy(aio->a_iov[i].iov_buf, ptr, num);
-			ptr += num;
-			resid -= num;
-		}
-		nni_aio_finish(aio, NNG_OK, nni_msg_len(msg));
-		nni_msg_free(msg);
+		nni_aio_finish_msg(aio, msg);
 	}
 }
 
@@ -264,11 +247,19 @@ static void
 dtls_bio_send(void *arg, nng_aio *aio)
 {
 	dtls_pipe *p = arg;
+	nni_iov    iov;
+	nni_msg   *msg;
 
 	nni_mtx_lock(&p->lower_mtx);
 	if (!p->closed) {
 		nni_aio_set_input(aio, 0, &p->peer_addr);
+		msg         = nni_aio_get_msg(aio);
+		iov.iov_buf = nni_msg_body(msg);
+		iov.iov_len = nni_msg_len(msg);
+		nng_aio_set_iov(aio, 1, &iov);
 		nng_udp_send(p->ep->udp, aio);
+	} else {
+		nni_aio_finish_error(aio, NNG_ECLOSED);
 	}
 	nni_mtx_unlock(&p->lower_mtx);
 }
@@ -341,6 +332,8 @@ dtls_pipe_send(void *arg, nni_aio *aio)
 	nni_mtx_lock(&ep->mtx);
 	sndmax = p->send_max;
 	if (!nni_aio_start(aio, dtls_pipe_send_cancel, p)) {
+		nni_aio_set_msg(aio, NULL);
+		nni_msg_free(msg);
 		nni_mtx_unlock(&ep->mtx);
 		return;
 	}
@@ -545,7 +538,7 @@ dtls_pipe_recv_tls(dtls_pipe *p)
 	nng_aio *aio = nni_list_first(&p->recv_aios);
 	size_t   len;
 	nng_msg *msg;
-	int      rv;
+	nng_err  rv;
 
 	if (aio == NULL) {
 		return;
@@ -766,7 +759,7 @@ dtls_pipe_alloc(dtls_ep *ep, dtls_pipe **pp, const nng_sockaddr *sa)
 	p->recv_max  = ep->rcvmax;
 	*pp          = p;
 
-	if (((rv = nni_tls_init(&p->tls, ep->tlscfg)) != NNG_OK) ||
+	if (((rv = nni_tls_init(&p->tls, ep->tlscfg, true)) != NNG_OK) ||
 	    ((rv = nni_tls_start(&p->tls, &dtls_bio_ops, p, sa)) != NNG_OK) ||
 	    ((rv = dtls_add_pipe(ep, p)) != NNG_OK)) {
 		nni_pipe_close(p->npipe);
@@ -919,6 +912,7 @@ dtls_add_pipe(dtls_ep *ep, dtls_pipe *p)
 			id = 1;
 		}
 	}
+	p->id = id;
 	return (nni_id_set(&ep->pipes, id, p));
 }
 
@@ -942,11 +936,11 @@ dtls_rx_cb(void *arg)
 	dtls_ep   *ep = arg;
 	dtls_pipe *p;
 	nni_aio   *aio = &ep->rx_aio;
-	int        rv;
+	nng_err    rv;
 	nni_msg   *msg;
 
 	nni_mtx_lock(&ep->mtx);
-	if ((rv = nni_aio_result(aio)) != 0) {
+	if ((rv = nni_aio_result(aio)) != NNG_OK) {
 		// something bad happened on RX... which is unexpected.
 		// sleep a little bit and hope for recovery.
 		switch (nni_aio_result(aio)) {
@@ -979,12 +973,12 @@ dtls_rx_cb(void *arg)
 	}
 	NNI_ASSERT(p != NULL);
 
-	if (nni_msg_alloc(&msg, nni_aio_count(aio)) != NNG_OK) {
+	size_t len = nni_aio_count(aio);
+	if (nni_msg_alloc(&msg, len) != NNG_OK) {
 		// TODO BUMP A NO RECV ALLOC STAT
 		goto fail;
 	}
-	memcpy(nni_msg_body(msg), ep->rx_buf, nni_aio_count(aio));
-	dtls_start_rx(ep);
+	memcpy(nni_msg_body(msg), ep->rx_buf, len);
 	nni_pipe_hold(p->npipe);
 	nni_mtx_unlock(&ep->mtx);
 
@@ -1006,6 +1000,10 @@ dtls_rx_cb(void *arg)
 		nni_pipe_close(p->npipe);
 	}
 	nni_pipe_rele(p->npipe);
+
+	nni_mtx_lock(&ep->mtx);
+	dtls_start_rx(ep);
+	nni_mtx_unlock(&ep->mtx);
 	return;
 
 fail:
@@ -1035,26 +1033,10 @@ dtls_pipe_get_recvmax(void *arg, void *v, size_t *szp, nni_type t)
 	return (rv);
 }
 
-static nng_err
-dtls_pipe_get_remaddr(void *arg, void *v, size_t *szp, nni_type t)
-{
-	dtls_pipe *p  = arg;
-	dtls_ep   *ep = p->ep;
-	nng_err    rv;
-	nni_mtx_lock(&ep->mtx);
-	rv = nni_copyout_sockaddr(&p->peer_addr, v, szp, t);
-	nni_mtx_unlock(&ep->mtx);
-	return (rv);
-}
-
 static nni_option dtls_pipe_options[] = {
 	{
 	    .o_name = NNG_OPT_RECVMAXSZ,
 	    .o_get  = dtls_pipe_get_recvmax,
-	},
-	{
-	    .o_name = NNG_OPT_REMADDR,
-	    .o_get  = dtls_pipe_get_remaddr,
 	},
 	{
 	    .o_name = NULL,
@@ -1066,10 +1048,29 @@ dtls_pipe_getopt(
     void *arg, const char *name, void *buf, size_t *szp, nni_type t)
 {
 	dtls_pipe *p = arg;
-	int        rv;
 
-	rv = nni_getopt(dtls_pipe_options, name, p, buf, szp, t);
-	return (rv);
+	return (nni_getopt(dtls_pipe_options, name, p, buf, szp, t));
+}
+
+static nng_err
+dtls_pipe_peer_cert(void *arg, nng_tls_cert **certp)
+{
+	dtls_pipe *p = arg;
+
+	return (nni_tls_peer_cert(&p->tls, certp));
+}
+static const nng_sockaddr *
+dtls_pipe_peer_addr(void *arg)
+{
+	dtls_pipe *p = arg;
+	return (&p->peer_addr);
+}
+
+static const nng_sockaddr *
+dtls_pipe_self_addr(void *arg)
+{
+	dtls_pipe *p = arg;
+	return (&p->ep->self_sa);
 }
 
 static void
@@ -1136,7 +1137,8 @@ dtls_ep_stop(void *arg)
 	nni_aio_stop(&ep->timeaio);
 
 	nni_mtx_lock(&ep->mtx);
-	ep->fini = true;
+	ep->fini    = true;
+	ep->started = false;
 	nni_mtx_unlock(&ep->mtx);
 }
 
@@ -1147,7 +1149,7 @@ dtls_timer_cb(void *arg)
 {
 	dtls_ep   *ep = arg;
 	dtls_pipe *p;
-	int        rv;
+	nng_err    rv;
 
 	nni_mtx_lock(&ep->mtx);
 	rv = nni_aio_result(&ep->timeaio);
@@ -1188,7 +1190,7 @@ dtls_timer_cb(void *arg)
 
 		if (p->dialer && now > p->next_refresh) {
 			p->send_op      = OPCODE_CREQ;
-			p->next_refresh = p->expire + p->refresh;
+			p->next_refresh = now + p->refresh;
 			dtls_pipe_send_tls(p);
 		}
 		if (refresh == NNG_DURATION_INFINITE && p->refresh > 0) {
@@ -1374,7 +1376,7 @@ dtls_resolv_cb(void *arg)
 	dtls_ep   *ep = arg;
 	dtls_pipe *p;
 	nni_aio   *aio;
-	int        rv;
+	nng_err    rv;
 
 	nni_mtx_lock(&ep->mtx);
 	if ((aio = nni_list_first(&ep->connaios)) == NULL) {
@@ -1387,7 +1389,7 @@ dtls_resolv_cb(void *arg)
 		nni_mtx_unlock(&ep->mtx);
 		return;
 	}
-	if ((rv = nni_aio_result(&ep->resaio)) != 0) {
+	if ((rv = nni_aio_result(&ep->resaio)) != NNG_OK) {
 		nni_aio_list_remove(aio);
 		nni_aio_finish_error(aio, rv);
 		nni_mtx_unlock(&ep->mtx);
@@ -1401,13 +1403,18 @@ dtls_resolv_cb(void *arg)
 		ep->self_sa.s_family = ep->peer_sa.s_family;
 	}
 
-	if (ep->udp == NULL) {
-		if ((rv = nng_udp_open(&ep->udp, &ep->self_sa)) != NNG_OK) {
-			nni_aio_list_remove(aio);
-			nni_aio_finish_error(aio, rv);
-			nni_mtx_unlock(&ep->mtx);
-			return;
-		}
+	// Close the socket if it was open, because we need to
+	// start with a fresh port.
+	if (ep->udp != NULL) {
+		nng_udp_close(ep->udp);
+		ep->udp = NULL;
+	}
+
+	if ((rv = nng_udp_open(&ep->udp, &ep->self_sa)) != NNG_OK) {
+		nni_aio_list_remove(aio);
+		nni_aio_finish_error(aio, rv);
+		nni_mtx_unlock(&ep->mtx);
+		return;
 	}
 
 	if ((rv = dtls_pipe_alloc(ep, &p, &ep->peer_sa)) != NNG_OK) {
@@ -1442,18 +1449,21 @@ dtls_ep_connect(void *arg, nni_aio *aio)
 		nni_mtx_unlock(&ep->mtx);
 		return;
 	}
-	if (ep->started) {
+	if (!nni_list_empty(&ep->connaios)) {
 		nni_aio_finish_error(aio, NNG_EBUSY);
 		nni_mtx_unlock(&ep->mtx);
 		return;
 	}
-	NNI_ASSERT(nni_list_empty(&ep->connaios));
 	ep->dialer = true;
-
+	NNI_ASSERT(nni_list_empty(&ep->connaios));
 	nni_list_append(&ep->connaios, aio);
 
-	// lookup the IP address
+	if (ep->started) {
+		nni_mtx_unlock(&ep->mtx);
+		return;
+	}
 
+	// lookup the IP address
 	memset(&ep->resolv, 0, sizeof(ep->resolv));
 	ep->resolv.ri_family  = ep->af;
 	ep->resolv.ri_host    = ep->url->u_hostname;
@@ -1504,38 +1514,6 @@ dtls_ep_get_port(void *arg, void *buf, size_t *szp, nni_type t)
 
 	NNI_GET16(paddr, port);
 	return (nni_copyout_int(port, buf, szp, t));
-}
-
-static nng_err
-dtls_ep_get_locaddr(void *arg, void *v, size_t *szp, nni_opt_type t)
-{
-	dtls_ep     *ep = arg;
-	nng_sockaddr sa;
-
-	nni_mtx_lock(&ep->mtx);
-	if (ep->udp != NULL) {
-		(void) nng_udp_sockname(ep->udp, &sa);
-	} else {
-		sa = ep->self_sa;
-	}
-	nni_mtx_unlock(&ep->mtx);
-
-	return (nni_copyout_sockaddr(&sa, v, szp, t));
-}
-
-static nng_err
-dtls_ep_get_remaddr(void *arg, void *v, size_t *szp, nni_opt_type t)
-{
-	dtls_ep *ep = arg;
-	nng_err  rv;
-
-	if (!ep->dialer) {
-		return (NNG_ENOTSUP);
-	}
-	nni_mtx_lock(&ep->mtx);
-	rv = nni_copyout_sockaddr(&ep->peer_sa, v, szp, t);
-	nni_mtx_unlock(&ep->mtx);
-	return (rv);
 }
 
 static nng_err
@@ -1674,15 +1652,18 @@ dtls_ep_accept(void *arg, nni_aio *aio)
 }
 
 static nni_sp_pipe_ops dtls_pipe_ops = {
-	.p_size   = dtls_pipe_size,
-	.p_init   = dtls_pipe_init,
-	.p_fini   = dtls_pipe_fini,
-	.p_stop   = dtls_pipe_stop,
-	.p_send   = dtls_pipe_send,
-	.p_recv   = dtls_pipe_recv,
-	.p_close  = dtls_pipe_close,
-	.p_peer   = dtls_pipe_peer,
-	.p_getopt = dtls_pipe_getopt,
+	.p_size      = dtls_pipe_size,
+	.p_init      = dtls_pipe_init,
+	.p_fini      = dtls_pipe_fini,
+	.p_stop      = dtls_pipe_stop,
+	.p_send      = dtls_pipe_send,
+	.p_recv      = dtls_pipe_recv,
+	.p_close     = dtls_pipe_close,
+	.p_peer      = dtls_pipe_peer,
+	.p_getopt    = dtls_pipe_getopt,
+	.p_peer_cert = dtls_pipe_peer_cert,
+	.p_peer_addr = dtls_pipe_peer_addr,
+	.p_self_addr = dtls_pipe_self_addr,
 };
 
 static const nni_option dtls_ep_opts[] = {
@@ -1692,15 +1673,7 @@ static const nni_option dtls_ep_opts[] = {
 	    .o_set  = dtls_ep_set_recvmaxsz,
 	},
 	{
-	    .o_name = NNG_OPT_LOCADDR,
-	    .o_get  = dtls_ep_get_locaddr,
-	},
-	{
-	    .o_name = NNG_OPT_REMADDR,
-	    .o_get  = dtls_ep_get_remaddr,
-	},
-	{
-	    .o_name = NNG_OPT_TCP_BOUND_PORT,
+	    .o_name = NNG_OPT_BOUND_PORT,
 	    .o_get  = dtls_ep_get_port,
 	},
 	// terminate list

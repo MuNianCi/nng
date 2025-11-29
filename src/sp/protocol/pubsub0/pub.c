@@ -8,9 +8,14 @@
 // found online at https://opensource.org/licenses/MIT.
 //
 
-#include <string.h>
-
-#include "core/nng_impl.h"
+#include "../../../core/aio.h"
+#include "../../../core/defs.h"
+#include "../../../core/lmq.h"
+#include "../../../core/message.h"
+#include "../../../core/pipe.h"
+#include "../../../core/pollable.h"
+#include "../../../core/protocol.h"
+#include "../../../core/socket.h"
 
 // Publish protocol.  The PUB protocol simply sends messages out, as
 // a broadcast.  It has nothing more sophisticated because it does not
@@ -35,6 +40,7 @@ static void pub0_pipe_fini(void *);
 
 // pub0_sock is our per-socket protocol private structure.
 struct pub0_sock {
+	nni_sock    *sock;
 	nni_list     pipes;
 	nni_mtx      mtx;
 	bool         closed;
@@ -80,6 +86,7 @@ pub0_sock_init(void *arg, nni_sock *ns)
 	nni_mtx_init(&sock->mtx);
 	NNI_LIST_INIT(&sock->pipes, pub0_pipe, node);
 	sock->sendbuf = 16; // fairly arbitrary
+	sock->sock    = ns;
 
 #if NNG_ENABLE_STATS
 	static const nni_stat_info tx_direct_info = {
@@ -307,6 +314,7 @@ pub0_sock_send(void *arg, nni_aio *aio)
 	if (direct == 0 && queued == 0) {
 		dropped++; // we didn't find a pipe to send it to!
 	}
+	nni_sock_bump_tx(sock->sock, len);
 	nni_stat_inc(&sock->stat_tx_discard, dropped);
 	nni_stat_inc(&sock->stat_tx_queued, queued);
 	nni_stat_inc(&sock->stat_tx_direct, direct);
@@ -402,7 +410,6 @@ static nni_proto_sock_ops pub0_sock_ops = {
 };
 
 static nni_proto pub0_proto = {
-	.proto_version  = NNI_PROTOCOL_VERSION,
 	.proto_self     = { NNI_PROTO_PUB_V0, "pub" },
 	.proto_peer     = { NNI_PROTO_SUB_V0, "sub" },
 	.proto_flags    = NNI_PROTO_FLAG_SND,
@@ -411,7 +418,6 @@ static nni_proto pub0_proto = {
 };
 
 static nni_proto pub0_proto_raw = {
-	.proto_version  = NNI_PROTOCOL_VERSION,
 	.proto_self     = { NNI_PROTO_PUB_V0, "pub" },
 	.proto_peer     = { NNI_PROTO_SUB_V0, "sub" },
 	.proto_flags    = NNI_PROTO_FLAG_SND | NNI_PROTO_FLAG_RAW,
