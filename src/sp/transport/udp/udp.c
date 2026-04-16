@@ -655,7 +655,7 @@ udp_recv_data(udp_ep *ep, udp_sp_msg *dreq, size_t len, const nng_sockaddr *sa)
 			return;
 		}
 
-		if (len > nng_msg_len(msg)) {
+		if (nng_msg_len(msg) > len) {
 			// chop off any unfilled tail
 			nng_msg_chop(msg, nng_msg_len(msg) - len);
 		}
@@ -1224,7 +1224,7 @@ udp_ep_init(
 	ep->proto            = nni_sock_proto_id(sock);
 	ep->peer             = nni_sock_peer_id(sock);
 	ep->url              = url;
-	ep->refresh          = NNG_UDP_REFRESH; // one minute by default
+	ep->refresh          = NNG_UDP_REFRESH; // five seconds by default
 	ep->rcvmax           = NNG_UDP_RECVMAX;
 	ep->copymax          = NNG_UDP_COPYMAX;
 	if ((rv = nni_msg_alloc(&ep->rx_payload, ep->rcvmax) != 0)) {
