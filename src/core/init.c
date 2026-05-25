@@ -136,6 +136,11 @@ nng_fini(void)
 		nni_atomic_flag_reset(&init_busy);
 		return;
 	}
+	
+	while (nni_reap_sys_drain()) {
+    	continue;
+	}
+	
 	nni_sock_closeall();
 	nni_sp_tran_sys_fini();
 
