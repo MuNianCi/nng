@@ -12,6 +12,8 @@
 
   - [Sockets](./api/sock.md)
 
+  - [Devices](./api/device.md)
+
   - [Contexts](./api/ctx.md)
 
   - [Pipes](./api/pipe.md)
@@ -21,6 +23,8 @@
   - [Time](./api/time.md)
 
   - [URLs](./api/url.md)
+
+  - [Socket Addresses](./api/sockaddr.md)
 
   - [Asynchronous I/O](./api/aio.md)
 
@@ -35,6 +39,8 @@
   - [Errors](./api/errors.md)
 
   - [Streams](./api/stream.md)
+
+  - [TLS](./api/tls.md)
 
   - [HTTP](./api/http.md)
 
@@ -61,6 +67,9 @@
 
   - [Intra-Process Transport](./tran/inproc.md)
   - [Inter-Process Transport](./tran/ipc.md)
+  - [TCP Transport](./tran/tcp.md)
+  - [TLS Transport](./tran/tls.md)
+  - [WebSocket Transport](./tran/websocket.md)
   - [BSD Socket (Experimental)](./tran/socket.md)
   - [UDP Transport (Experimental)](./tran/udp.md)
 

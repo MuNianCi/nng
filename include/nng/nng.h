@@ -772,6 +772,7 @@ NNG_DECL nng_err nng_pipe_get_string(nng_pipe, const char *, const char **);
 NNG_DECL nng_err nng_pipe_get_strdup(nng_pipe, const char *, char **);
 NNG_DECL nng_err nng_pipe_get_strcpy(nng_pipe, const char *, char *, size_t);
 NNG_DECL nng_err nng_pipe_get_strlen(nng_pipe, const char *, size_t *);
+NNG_DECL nng_err nng_pipe_get_scheme(nng_pipe, const char **);
 NNG_DECL nng_err nng_pipe_peer_addr(nng_pipe, nng_sockaddr *);
 NNG_DECL nng_err nng_pipe_self_addr(nng_pipe, nng_sockaddr *);
 NNG_DECL nng_err nng_pipe_peer_cert(nng_pipe, nng_tls_cert **);
@@ -1069,15 +1070,14 @@ NNG_DECL uint64_t nng_stat_timestamp(const nng_stat *);
 // Device functionality.  This connects two sockets together in a device,
 // which means that messages from one side are forwarded to the other.
 // This version is synchronous, which means the caller will block until
-// one of the sockets is closed. Note that caller is responsible for
-// finally closing both sockets when this function returns.
+// the device stops.  On success, ownership of both sockets transfers to
+// the device; the application must not use or close them again.
 NNG_DECL nng_err nng_device(nng_socket, nng_socket);
 
 // Asynchronous form of nng_device.  When this succeeds, the device is
-// left intact and functioning in the background, until one of the sockets
-// is closed or the application exits.  The sockets may be shut down if
-// the device fails, but the caller is responsible for ultimately closing
-// the sockets properly after the device is torn down.
+// left intact and functioning in the background, until the device AIO is
+// canceled or the device fails.  On success, ownership of both sockets
+// transfers to the device; the application must not use or close them again.
 NNG_DECL void nng_device_aio(nng_aio *, nng_socket, nng_socket);
 
 // Symbol name and visibility.  TBD.  The only symbols that really should

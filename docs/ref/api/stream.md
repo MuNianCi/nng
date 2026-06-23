@@ -88,6 +88,18 @@ const nng_sockaddr *nng_stream_self_addr(nng_stream *s);
 These functions are used to obtain value of the local (self) or remote (peer) addresses
 for the given stream _s_.
 
+## TLS Peer Certificates
+
+```c
+nng_err nng_stream_peer_cert(nng_stream *s, nng_tls_cert **certp);
+```
+
+{{hi:`nng_stream_peer_cert`}}
+The `nng_stream_peer_cert` function obtains the peer TLS certificate for a stream, when one is available.
+The certificate is returned in the location referenced by _certp_ and must be released with
+[`nng_tls_cert_free`] when it is no longer needed.
+See [`nng_tls_cert`] for more information.
+
 ## Getting Stream Options
 
 ```c
@@ -322,6 +334,9 @@ The `nng_stream_dialer_set_` and `nng_stream_listener_set_` function families ch
 
 These functions access an option as a specific type. The transport layer will have details about which options
 are available, and which type they may be accessed using.
+
+WebSocket streams support additional handshake, header, frame, and text-mode options.
+See the [WebSocket transport] documentation for details.
 
 In the case of `nng_stream_dialer_get_string` and `nng_stream_listener_get_string`, the memory holding
 the string is only valid as long as the associated object remains open.
