@@ -3,6 +3,7 @@
 [Copyright](./copyright.md)
 [Dedication](./dedication.md)
 [Preface](./preface.md)
+[Overview](./overview/index.md)
 
 - [API Reference](./api/index.md)
 
@@ -11,6 +12,8 @@
   - [Messages](./api/msg.md)
 
   - [Sockets](./api/sock.md)
+
+  - [Dialers and Listeners](./api/endpoint.md)
 
   - [Devices](./api/device.md)
 
@@ -69,9 +72,14 @@
   - [Inter-Process Transport](./tran/ipc.md)
   - [TCP Transport](./tran/tcp.md)
   - [TLS Transport](./tran/tls.md)
+  - [DTLS Transport (Experimental)](./tran/dtls.md)
   - [WebSocket Transport](./tran/websocket.md)
   - [BSD Socket (Experimental)](./tran/socket.md)
   - [UDP Transport (Experimental)](./tran/udp.md)
+
+- [Tools](./tools/index.md)
+
+  - [nngcat](./tools/nngcat.md)
 
 - [Migration Guides](./migrate/index.md)
 
