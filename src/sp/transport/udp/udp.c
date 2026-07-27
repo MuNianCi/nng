@@ -422,7 +422,7 @@ udp_start_tx(udp_ep *ep)
 {
     udp_txring *ring = &ep->tx_ring;
     udp_txdesc *desc;
-    nng_msg *msg;
+    nni_msg *msg;
     
         if ((!ring->count) || (!ep->started) || ep->tx_busy || ep->stopped) {
             return;
@@ -2189,5 +2189,3 @@ nni_sp_udp_register(void)
     nni_sp_tran_register(&udp6_tran);
 #endif
 }
-
-
