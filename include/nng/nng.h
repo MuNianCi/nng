@@ -1454,6 +1454,18 @@ NNG_DECL void nng_log_notice(const char *msgid, const char *msg, ...);
 NNG_DECL void nng_log_info(const char *msgid, const char *msg, ...);
 NNG_DECL void nng_log_debug(const char *msgid, const char *msg, ...);
 
+#define log_info(format, ...) \
+ NNG_DECL       printf("\033[0;36m""[%s:%d] %s(): " format "\n""\033[0m", __FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#define log_warn(format, ...) \
+        printf("\033[0;33m""[%s:%d] %s(): " format "\n""\033[0m", __FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#define log_err(format, ...) \
+        printf("\033[0;31m""[%s:%d] %s(): " format "\n""\033[0m", __FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#define log_fatal(format, ...) \
+        printf("\033[0;35m""[%s:%d] %s(): " format "\n""\033[0m", __FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#define log_sts(format, ...) \
+        printf("\033[0;32m""[%s:%d] %s(): " format "\n""\033[0m", __FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#define log_trac(format, ...) \
+        printf("\033[0;34m""[%s:%d] %s(): " format "\n""\033[0m", __FILE__, __LINE__, __func__, ##__VA_ARGS__)
 // Log an authentication related message.  These will use the NNG_LOG_AUTH
 // facility.
 NNG_DECL void nng_log_auth(

@@ -29,6 +29,7 @@ option(NNG_HTTP_INTEROP_TESTS "Build HTTP client interoperability tests." OFF)
 option(NNG_TOOLS "Build extra tools." ${NNG_NATIVE_BUILD})
 option(NNG_ENABLE_NNGCAT "Enable building nngcat utility." ${NNG_TOOLS})
 option(NNG_ENABLE_COVERAGE "Enable coverage reporting." OFF)
+option(NNG_SAMPLES "Build sample programs." ON)
 # Eliding deprecated functionality can be used to build a slimmed down
 # version of the library, or alternatively to test for application
 # preparedness for expected feature removals (in the next major release.)
