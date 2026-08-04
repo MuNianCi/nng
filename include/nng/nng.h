@@ -25,6 +25,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 #include <time.h>
+#include <stdio.h>
 
 // NNG_DECL is used on declarations to deal with scope.
 // For building Windows DLLs, it should be the appropriate __declspec().
@@ -1455,7 +1456,7 @@ NNG_DECL void nng_log_info(const char *msgid, const char *msg, ...);
 NNG_DECL void nng_log_debug(const char *msgid, const char *msg, ...);
 
 #define log_info(format, ...) \
- NNG_DECL       printf("\033[0;36m""[%s:%d] %s(): " format "\n""\033[0m", __FILE__, __LINE__, __func__, ##__VA_ARGS__)
+        printf("\033[0;36m""[%s:%d] %s(): " format "\n""\033[0m", __FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #define log_warn(format, ...) \
         printf("\033[0;33m""[%s:%d] %s(): " format "\n""\033[0m", __FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #define log_err(format, ...) \
