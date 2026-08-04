@@ -138,61 +138,61 @@ struct udp_pipe {
 };
 
 struct udp_ep {
-    nng_udp *udp;
-    nni_mtx mtx;
-    uint16_t proto;
-    uint16_t peer;
-    uint16_t af; // address family
-    bool started;
-    bool closed;
-    bool stopped;
-    bool cooldown;
-    nng_url *url;
-    const char *host; // for dialers
-    nni_aio *useraio;
-    nni_aio *connaio;
-    nni_aio timeaio;
-    nni_aio resaio;
-    bool dialer;
-    bool tx_busy; // true if tx pending
-    nni_listener *nlistener;
-    nni_dialer *ndialer;
-    nni_msg *rx_payload; // current receive message
-    nng_sockaddr rx_sa; // addr for last message
-    nni_aio tx_aio; // aio for TX handling
-    nni_aio rx_aio; // aio for RX handling
-    nni_id_map pipes; // pipes (indexed by id)
-    nni_sockaddr self_sa; // our address
-    nni_sockaddr peer_sa; // peer address, only for dialer;
-    nni_sockaddr mesh_sa; // mesh source address (ours)
-    nni_list connaios; // aios from accept waiting for a client peer
-    nni_list connpipes; // pipes waiting to be connected
-    nni_list defer_close_list; // deferred pipe closes (avoid deadlock in udp_rx_cb)
-    nng_duration refresh; // refresh interval for connections in seconds
-    nng_duration conn_retry;
-    nng_duration conn_expire;
-    udp_sp_msg *rx_msg; // contains the received message header
-    uint16_t rcvmax; // max payload, trimmed to uint16_t
-    uint16_t copymax;
-    size_t max_peers;
-    size_t peer_count;
-    udp_txring tx_ring;
-    nni_time next_wake;
-    nni_aio_completions complq;
-    nni_resolv_item resolv;
-    
-        nni_stat_item st_rcv_max;
-    nni_stat_item st_rcv_toobig;
-    nni_stat_item st_rcv_nomatch;
-    nni_stat_item st_rcv_copy;
-    nni_stat_item st_rcv_nocopy;
-    nni_stat_item st_rcv_nobuf;
-    nni_stat_item st_snd_toobig;
-    nni_stat_item st_snd_nobuf;
-    nni_stat_item st_peer_inactive;
-    nni_stat_item st_copy_max;
-    nni_stat_item st_peer_max;
-    nni_stat_item st_peer_reject;
+    nng_udp             *udp;
+    nni_mtx              mtx;
+    uint16_t             proto;
+    uint16_t             peer;
+    uint16_t             af; // address family
+    bool                 started;
+    bool                 closed;
+    bool                 stopped;
+    bool                 cooldown;
+    nng_url             *url;
+    const char          *host; // for dialers
+    nni_aio             *useraio;
+    nni_aio             *connaio;
+    nni_aio              timeaio;
+    nni_aio              resaio;
+    bool                 dialer;
+    bool                 tx_busy; // true if tx pending
+    nni_listener        *nlistener;
+    nni_dialer          *ndialer;
+    nni_msg             *rx_payload; // current receive message
+    nng_sockaddr         rx_sa;    // addr for last message
+    nni_aio              tx_aio;   // aio for TX handling
+    nni_aio              rx_aio;   // aio for RX handling
+    nni_id_map           pipes;    // pipes (indexed by id)
+    nni_sockaddr         self_sa;  // our address
+    nni_sockaddr         peer_sa;  // peer address, only for dialer;
+    nni_sockaddr         mesh_sa;  // mesh source address (ours)
+    nni_list             connaios; // aios from accept waiting for a client peer
+    nni_list             connpipes;// pipes waiting to be connected
+    nni_list             defer_close_list; // deferred pipe closes (avoid deadlock in udp_rx_cb)
+    nng_duration         refresh; // refresh interval for connections in seconds
+    nng_duration         conn_retry;
+    nng_duration         conn_expire;
+    udp_sp_msg          *rx_msg; // contains the received message header
+    uint16_t             rcvmax; // max payload, trimmed to uint16_t
+    uint16_t             copymax;
+    size_t               max_peers;
+    size_t               peer_count;
+    udp_txring           tx_ring;
+    nni_time             next_wake;
+    nni_aio_completions  complq;
+    nni_resolv_item      resolv;
+
+    nni_stat_item        st_rcv_max;
+    nni_stat_item        st_rcv_toobig;
+    nni_stat_item        st_rcv_nomatch;
+    nni_stat_item        st_rcv_copy;
+    nni_stat_item        st_rcv_nocopy;
+    nni_stat_item        st_rcv_nobuf;
+    nni_stat_item        st_snd_toobig;
+    nni_stat_item        st_snd_nobuf;
+    nni_stat_item        st_peer_inactive;
+    nni_stat_item        st_copy_max;
+    nni_stat_item        st_peer_max;
+    nni_stat_item        st_peer_reject;
 };
 
 static void udp_ep_start(udp_ep *);
@@ -227,8 +227,8 @@ udp_pipe_close(void *arg)
     udp_pipe *p = arg;
     udp_ep *ep = p->ep;
     nni_aio *aio;
-    
-        nni_mtx_lock(&ep->mtx);
+
+    nni_mtx_lock(&ep->mtx);
     udp_remove_pipe(p);
     udp_send_disc(ep, p, DISC_CLOSED);
     while ((aio = nni_list_first(&p->rx_aios)) != NULL) {
@@ -268,8 +268,8 @@ udp_pipe_start(udp_pipe *p, udp_ep *ep, const nng_sockaddr *sa)
     p->id = nng_sockaddr_hash(sa);
     p->expire = now +
         (p->dialer ? ep->conn_expire : UDP_PIPE_TIMEOUT(p));
-    
-        return (udp_add_pipe(ep, p));
+
+    return (udp_add_pipe(ep, p));
 }
 
 static const nng_sockaddr *
@@ -291,12 +291,12 @@ udp_pipe_fini(void *arg)
 {
     udp_pipe *p = arg;
     nng_msg *m;
-    
-        // call with ep->mtx lock held
-        while (!nni_lmq_empty(&p->rx_mq)) {
-            nni_lmq_get(&p->rx_mq, &m);
-            nni_msg_free(m);
-        }
+
+    // call with ep->mtx lock held
+    while (!nni_lmq_empty(&p->rx_mq)) {
+        nni_lmq_get(&p->rx_mq, &m);
+        nni_msg_free(m);
+    }
     nni_lmq_fini(&p->rx_mq);
     NNI_ASSERT(nni_list_empty(&p->rx_aios));
 }
@@ -306,23 +306,23 @@ udp_find_pipe(udp_ep *ep, const nng_sockaddr *peer_addr)
 {
     uint64_t id = nng_sockaddr_hash(peer_addr);
     udp_pipe *p;
-    
-        // we'll keep incrementing id until we conclusively match
-        // or we get a NULL. This is another level of rehashing, but
-        // it keeps us from having to look up.
-        for (;;) {
-            if ((p = nni_id_get(&ep->pipes, id)) == NULL) {
-                return (NULL);
-            }
-            if (nng_sockaddr_equal(&p->peer_addr, peer_addr) &&
-                    !p->closed) {
-                return (p);
-            }
-            id++;
-            if (id == 0) {
-                id = 1;
-            }
+
+    // we'll keep incrementing id until we conclusively match
+    // or we get a NULL. This is another level of rehashing, but
+    // it keeps us from having to look up.
+    for (;;) {
+        if ((p = nni_id_get(&ep->pipes, id)) == NULL) {
+            return (NULL);
         }
+        if (nng_sockaddr_equal(&p->peer_addr, peer_addr) &&
+                !p->closed) {
+            return (p);
+        }
+        id++;
+        if (id == 0) {
+            id = 1;
+        }
+    }
 }
 
 static void
@@ -397,22 +397,22 @@ static void
 udp_start_rx(udp_ep *ep)
 {
     nni_iov iov;
-    
-        if (ep->closed) {
-            return;
-        }
-    
-        // We use this trick to collect the message header so that we can
-        // do the entire message in a single iov, which avoids the need to
-        // scatter/gather (which can be problematic for platforms that cannot
-        // do scatter/gather due to missing recvmsg.)
-        (void) nni_msg_insert(ep->rx_payload, NULL, sizeof(udp_sp_msg));
+
+    if (ep->closed) {
+        return;
+    }
+
+    // We use this trick to collect the message header so that we can
+    // do the entire message in a single iov, which avoids the need to
+    // scatter/gather (which can be problematic for platforms that cannot
+    // do scatter/gather due to missing recvmsg.)
+    (void) nni_msg_insert(ep->rx_payload, NULL, sizeof(udp_sp_msg));
     iov.iov_buf = nni_msg_body(ep->rx_payload);
     iov.iov_len = nni_msg_len(ep->rx_payload);
     ep->rx_msg = nni_msg_body(ep->rx_payload);
     nni_msg_trim(ep->rx_payload, sizeof(udp_sp_msg));
-    
-        nni_aio_set_input(&ep->rx_aio, 0, &ep->rx_sa);
+
+    nni_aio_set_input(&ep->rx_aio, 0, &ep->rx_sa);
     nni_aio_set_iov(&ep->rx_aio, 1, &iov);
     nng_udp_recv(ep->udp, &ep->rx_aio);
 }
@@ -423,35 +423,35 @@ udp_start_tx(udp_ep *ep)
     udp_txring *ring = &ep->tx_ring;
     udp_txdesc *desc;
     nni_msg *msg;
-    
-        if ((!ring->count) || (!ep->started) || ep->tx_busy || ep->stopped) {
-            return;
-        }
+
+    if ((!ring->count) || (!ep->started) || ep->tx_busy || ep->stopped) {
+        return;
+    }
     ep->tx_busy = true;
-    
-        // NB: This does not advance the tail yet.
-        // The tail will be advanced when the operation is complete.
-        desc = &ring->descs[ring->tail];
+
+    // NB: This does not advance the tail yet.
+    // The tail will be advanced when the operation is complete.
+    desc = &ring->descs[ring->tail];
     nni_iov iov[3];
     int niov = 0;
-    
-        NNI_ASSERT(desc->submitted);
+
+    NNI_ASSERT(desc->submitted);
     iov[0].iov_buf = &desc->header;
     iov[0].iov_len = sizeof(desc->header);
     niov++;
-    
-        if ((msg = desc->payload) != NULL) {
-            if (nni_msg_header_len(msg) > 0) {
-                iov[niov].iov_buf = nni_msg_header(msg);
-                iov[niov].iov_len = nni_msg_header_len(msg);
-                niov++;
-            }
-            if (nni_msg_len(msg) > 0) {
-                iov[niov].iov_buf = nni_msg_body(msg);
-                iov[niov].iov_len = nni_msg_len(msg);
-                niov++;
-            }
+
+    if ((msg = desc->payload) != NULL) {
+        if (nni_msg_header_len(msg) > 0) {
+            iov[niov].iov_buf = nni_msg_header(msg);
+            iov[niov].iov_len = nni_msg_header_len(msg);
+            niov++;
         }
+        if (nni_msg_len(msg) > 0) {
+            iov[niov].iov_buf = nni_msg_body(msg);
+            iov[niov].iov_len = nni_msg_len(msg);
+            niov++;
+        }
+    }
     nni_aio_set_input(&ep->tx_aio, 0, &desc->sa);
     nni_aio_set_iov(&ep->tx_aio, niov, iov);
     // it should *never* take this long, but allow for ARP resolution
@@ -465,15 +465,15 @@ udp_queue_tx(
 {
     udp_txring *ring = &ep->tx_ring;
     udp_txdesc *desc = &ring->descs[ring->head];
-    
-        if (ring->count == ring->size || !ep->started) {
-            // ring is full
-            nni_stat_inc(&ep->st_snd_nobuf, 1);
-            if (payload != NULL) {
-                nni_msg_free(payload);
-            }
-            return;
+
+    if (ring->count == ring->size || !ep->started) {
+        // ring is full
+        nni_stat_inc(&ep->st_snd_nobuf, 1);
+        if (payload != NULL) {
+            nni_msg_free(payload);
         }
+        return;
+    }
 #ifdef NNG_LITTLE_ENDIAN
     // This covers modern GCC, clang, Visual Studio.
     desc->header = *msg;
@@ -487,8 +487,8 @@ udp_queue_tx(
     NNI_PUT16LE(&desc->header.us_params[0], msg->us_params[0]);
     NNI_PUT16LE(&desc->header.us_params[1], msg->us_params[1]);
 #endif
-    
-        desc->payload = payload;
+
+    desc->payload = payload;
     desc->sa = *sa;
     desc->submitted = true;
     ring->count++;
@@ -504,8 +504,8 @@ udp_finish_tx(udp_ep *ep)
 {
     udp_txring *ring = &ep->tx_ring;
     udp_txdesc *desc;
-    
-        NNI_ASSERT(ring->count > 0);
+
+    NNI_ASSERT(ring->count > 0);
     desc = &ring->descs[ring->tail];
     NNI_ASSERT(desc->submitted);
     if (desc->payload != NULL) {
@@ -519,9 +519,9 @@ udp_finish_tx(udp_ep *ep)
         ring->tail = 0;
     }
     ep->tx_busy = false;
-    
-        // possibly start another tx going
-        udp_start_tx(ep);
+
+    // possibly start another tx going
+    udp_start_tx(ep);
 }
 
 static void
@@ -545,8 +545,8 @@ static void
 udp_send_disc_full(udp_ep *ep, const nng_sockaddr *sa, udp_disc_reason reason)
 {
     udp_sp_msg disc;
-    
-        disc.us_ver = 0x1;
+
+    disc.us_ver = 0x1;
     disc.us_op_code = OPCODE_DISC;
     disc.us_type = ep->proto;
     disc.us_reason = (uint16_t) reason;
@@ -565,8 +565,8 @@ udp_send_creq(udp_ep *ep, udp_pipe *p)
     creq.us_refresh = (p->refresh + NNI_SECOND - 1) / NNI_SECOND;
     p->next_creq = nni_clock() + UDP_PIPE_REFRESH(p);
     p->next_wake = p->next_creq;
-    
-        udp_pipe_schedule(p);
+
+    udp_pipe_schedule(p);
     udp_queue_tx(ep, &p->peer_addr, (void *) &creq, NULL);
 }
 
@@ -588,11 +588,11 @@ udp_recv_disc(udp_ep *ep, udp_sp_msg *disc, const nng_sockaddr *sa)
     udp_pipe *p;
     nni_aio *aio;
     char buf[NNG_MAXADDRSTRLEN];
-    
-        nng_log_debug("NNG-UDP-DISC", "Received disconnect from %s reason %d",
-                nng_str_sockaddr(sa, buf, sizeof(buf)), disc->us_reason);
-    
-        p = udp_find_pipe(ep, sa);
+
+    nng_log_debug("NNG-UDP-DISC", "Received disconnect from %s reason %d",
+            nng_str_sockaddr(sa, buf, sizeof(buf)), disc->us_reason);
+
+    p = udp_find_pipe(ep, sa);
     if (p != NULL) {
         p->closed = true;
         while ((aio = nni_list_first(&p->rx_aios)) != NULL) {
@@ -623,87 +623,87 @@ udp_recv_data(udp_ep *ep, udp_sp_msg *dreq, size_t len, const nng_sockaddr *sa)
     nni_aio *aio;
     nni_msg *msg;
     nni_time now;
-    
-        if ((p = udp_find_pipe(ep, sa)) == NULL) {
-            nni_stat_inc(&ep->st_rcv_nomatch, 1);
-            return;
-        }
-    
-        now = nni_clock();
-    
-        // Make sure the message wasn't truncated, and that it fits within
-        // our maximum agreed upon payload.
-        if ((dreq->us_length > len) || (dreq->us_length > p->rcvmax)) {
-            nni_stat_inc(&ep->st_rcv_toobig, 1);
-            udp_send_disc(ep, p, DISC_MSGSIZE);
-            return;
-        }
-    
-        p->expire = now + UDP_PIPE_TIMEOUT(p);
+
+    if ((p = udp_find_pipe(ep, sa)) == NULL) {
+        nni_stat_inc(&ep->st_rcv_nomatch, 1);
+        return;
+    }
+
+    now = nni_clock();
+
+    // Make sure the message wasn't truncated, and that it fits within
+    // our maximum agreed upon payload.
+    if ((dreq->us_length > len) || (dreq->us_length > p->rcvmax)) {
+        nni_stat_inc(&ep->st_rcv_toobig, 1);
+        udp_send_disc(ep, p, DISC_MSGSIZE);
+        return;
+    }
+
+    p->expire = now + UDP_PIPE_TIMEOUT(p);
     p->next_wake = now + UDP_PIPE_REFRESH(p);
-    
-        // We verified this above. By setting it here we ensure that we
-        // do not wind up copying or accessing past the header, which is
-        // both faster and prevents certain kinds of data smuggling.
-        len = dreq->us_length;
-    
-        udp_pipe_schedule(p);
-    
-        // trim the message down to its length.
-        nni_msg_chop(ep->rx_payload, nni_msg_len(ep->rx_payload) - len);
-    
-        // We have a choice to make. Drop this message (easiest), or
-        // drop the oldest. We drop the oldest because generally we
-        // find that applications prefer to have more recent data rather
-        // than keeping stale data.
-        if (nni_lmq_full(&p->rx_mq)) {
-            nni_msg *old;
-            (void) nni_lmq_get(&p->rx_mq, &old);
-            nni_msg_free(old);
-            nni_stat_inc(&ep->st_rcv_nobuf, 1);
-        }
-    
-        // Short message, just alloc and copy
-        if (len <= ep->copymax) {
-            nni_stat_inc(&ep->st_rcv_copy, 1);
-            if (nng_msg_alloc(&msg, len) != 0) {
-                if (p->npipe != NULL) {
-                    nni_pipe_bump_error(p->npipe, NNG_ENOMEM);
-                }
-                return;
+
+    // We verified this above. By setting it here we ensure that we
+    // do not wind up copying or accessing past the header, which is
+    // both faster and prevents certain kinds of data smuggling.
+    len = dreq->us_length;
+
+    udp_pipe_schedule(p);
+
+    // trim the message down to its length.
+    nni_msg_chop(ep->rx_payload, nni_msg_len(ep->rx_payload) - len);
+
+    // We have a choice to make. Drop this message (easiest), or
+    // drop the oldest. We drop the oldest because generally we
+    // find that applications prefer to have more recent data rather
+    // than keeping stale data.
+    if (nni_lmq_full(&p->rx_mq)) {
+        nni_msg *old;
+        (void) nni_lmq_get(&p->rx_mq, &old);
+        nni_msg_free(old);
+        nni_stat_inc(&ep->st_rcv_nobuf, 1);
+    }
+
+    // Short message, just alloc and copy
+    if (len <= ep->copymax) {
+        nni_stat_inc(&ep->st_rcv_copy, 1);
+        if (nng_msg_alloc(&msg, len) != 0) {
+            if (p->npipe != NULL) {
+                nni_pipe_bump_error(p->npipe, NNG_ENOMEM);
             }
-            nni_msg_set_address(msg, sa);
-            memcpy(nni_msg_body(msg), nni_msg_body(ep->rx_payload), len);
-            nni_lmq_put(&p->rx_mq, msg);
-            nni_msg_realloc(ep->rx_payload, ep->rcvmax);
-        } else {
-            nni_stat_inc(&ep->st_rcv_nocopy, 1);
-            // Message size larger than copy break, do zero copy
-            msg = ep->rx_payload;
-            if (nng_msg_alloc(&ep->rx_payload, ep->rcvmax) != 0) {
-                ep->rx_payload = msg; // make sure we put it back
-                if (p->npipe != NULL) {
-                    nni_pipe_bump_error(p->npipe, NNG_ENOMEM);
-                }
-                return;
+            return;
+        }
+        nni_msg_set_address(msg, sa);
+        memcpy(nni_msg_body(msg), nni_msg_body(ep->rx_payload), len);
+        nni_lmq_put(&p->rx_mq, msg);
+        nni_msg_realloc(ep->rx_payload, ep->rcvmax);
+    } else {
+        nni_stat_inc(&ep->st_rcv_nocopy, 1);
+        // Message size larger than copy break, do zero copy
+        msg = ep->rx_payload;
+        if (nng_msg_alloc(&ep->rx_payload, ep->rcvmax) != 0) {
+            ep->rx_payload = msg; // make sure we put it back
+            if (p->npipe != NULL) {
+                nni_pipe_bump_error(p->npipe, NNG_ENOMEM);
             }
-            
-                if (nng_msg_len(msg) > len) {
-                    // chop off any unfilled tail
-                    nng_msg_chop(msg, nng_msg_len(msg) - len);
-                }
-            nni_msg_set_address(msg, sa);
-            nni_lmq_put(&p->rx_mq, msg);
+            return;
         }
-    
-        while (((aio = nni_list_first(&p->rx_aios)) != NULL) &&
-                (!nni_lmq_empty(&p->rx_mq))) {
-            nni_aio_list_remove(aio);
-            nni_lmq_get(&p->rx_mq, &msg);
-            nni_aio_set_msg(aio, msg);
-            nni_aio_completions_add(
-                    &ep->complq, aio, 0, nni_aio_count(aio));
+
+        if (nng_msg_len(msg) > len) {
+            // chop off any unfilled tail
+            nng_msg_chop(msg, nng_msg_len(msg) - len);
         }
+        nni_msg_set_address(msg, sa);
+        nni_lmq_put(&p->rx_mq, msg);
+    }
+
+    while (((aio = nni_list_first(&p->rx_aios)) != NULL) &&
+            (!nni_lmq_empty(&p->rx_mq))) {
+        nni_aio_list_remove(aio);
+        nni_lmq_get(&p->rx_mq, &msg);
+        nni_aio_set_msg(aio, msg);
+        nni_aio_completions_add(
+                &ep->complq, aio, 0, nni_aio_count(aio));
+    }
 }
 
 static void
@@ -711,40 +711,40 @@ udp_recv_creq(udp_ep *ep, udp_sp_msg *creq, nng_sockaddr *sa)
 {
     udp_pipe *p;
     nni_time now;
-    
-        now = nni_clock();
-    
-        if (ep->closed) {
-            // endpoint is closing down, just drop it without further ado
-            return;
-        }
-    
-        if (ep->dialer) {
-            // dialers do not accept CREQ requests
-            udp_send_disc_full(ep, sa, DISC_REFUSED);
-            return;
-        }
+
+    now = nni_clock();
+
+    if (ep->closed) {
+        // endpoint is closing down, just drop it without further ado
+        return;
+    }
+
+    if (ep->dialer) {
+        // dialers do not accept CREQ requests
+        udp_send_disc_full(ep, sa, DISC_REFUSED);
+        return;
+    }
     if ((p = udp_find_pipe(ep, sa))) {
         if (p->peer != creq->us_type) {
             udp_send_disc(ep, p, DISC_TYPE);
             return;
         }
-        
-            // so we know who it is from.. this is a refresh.
-            if (creq->us_refresh == 0) {
-                udp_send_disc(ep, p, DISC_NEGO);
-                return;
-            }
-        
+
+        // so we know who it is from.. this is a refresh.
+        if (creq->us_refresh == 0) {
+            udp_send_disc(ep, p, DISC_NEGO);
+            return;
+        }
+
         nng_duration peer_refresh = creq->us_refresh * NNI_SECOND;                                                                                                              
         if (peer_refresh > p->refresh) {   
             p->refresh = peer_refresh;                                                                                                                                            
         }   
-        
+
         p->next_wake = now + UDP_PIPE_REFRESH(p);
         p->expire = now + UDP_PIPE_TIMEOUT(p);
-        
-            udp_pipe_schedule(p);
+
+        udp_pipe_schedule(p);
         udp_send_cack(ep, p);
         return;
     }
@@ -753,36 +753,36 @@ udp_recv_creq(udp_ep *ep, udp_sp_msg *creq, nng_sockaddr *sa)
         udp_send_disc_full(ep, sa, DISC_NOBUF);
         return;
     }
-    
-        // new pipe
-        if (creq->us_refresh == 0) {
-            udp_send_disc_full(ep, sa, DISC_NEGO);
-            return;
-        }
-    
-        // Clean up any stale closed pipes for this peer address
-        // so the new pipe can be added at the canonical hash slot.
-        udp_ep_cleanup_closed_pipes(ep, sa);
-    
-        if (nni_pipe_alloc_listener((void **) &p, ep->nlistener) != 0) {
-            udp_send_disc_full(ep, sa, DISC_NOBUF);
-            return;
-        }
-    
-        if (udp_pipe_start(p, ep, sa) != NNG_OK) {
-            udp_send_disc(ep, p, DISC_NOBUF);
-            nni_pipe_close(p->npipe);
-            return;
-        }
-    
-        if ((creq->us_refresh * NNI_SECOND) < p->refresh) {
-            p->refresh = (creq->us_refresh * NNI_SECOND);
-        }
+
+    // new pipe
+    if (creq->us_refresh == 0) {
+        udp_send_disc_full(ep, sa, DISC_NEGO);
+        return;
+    }
+
+    // Clean up any stale closed pipes for this peer address
+    // so the new pipe can be added at the canonical hash slot.
+    udp_ep_cleanup_closed_pipes(ep, sa);
+
+    if (nni_pipe_alloc_listener((void **) &p, ep->nlistener) != 0) {
+        udp_send_disc_full(ep, sa, DISC_NOBUF);
+        return;
+    }
+
+    if (udp_pipe_start(p, ep, sa) != NNG_OK) {
+        udp_send_disc(ep, p, DISC_NOBUF);
+        nni_pipe_close(p->npipe);
+        return;
+    }
+
+    if ((creq->us_refresh * NNI_SECOND) < p->refresh) {
+        p->refresh = (creq->us_refresh * NNI_SECOND);
+    }
     p->peer = creq->us_type;
     p->sndmax = creq->us_recvmax;
     p->next_wake = now + UDP_PIPE_REFRESH(p);
-    
-        udp_pipe_schedule(p);
+
+    udp_pipe_schedule(p);
     p->state = PIPE_CONN_MATCH;
     nni_list_append(&ep->connpipes, p);
     udp_send_cack(ep, p);
@@ -794,47 +794,47 @@ udp_recv_cack(udp_ep *ep, udp_sp_msg *cack, const nng_sockaddr *sa)
 {
     udp_pipe *p;
     nni_time now;
-    
-        if ((p = udp_find_pipe(ep, sa)) && (!p->closed)) {
-            if (p->peer != cack->us_type) {
-                udp_send_disc(ep, p, DISC_TYPE);
-                return;
-            }
-            
-                // so we know who it is from.. this is a refresh.
-                p->sndmax = cack->us_recvmax;
-            p->peer = cack->us_type;
-            
-                if (cack->us_refresh == 0) {
-                    udp_send_disc(ep, p, DISC_NEGO);
-                    return;
-                }
-            // Always reset this, as dialers may have started with an
-            // unreasonably low value.
-            p->refresh = ep->refresh;
-            if ((cack->us_refresh * NNI_SECOND) < p->refresh) {
-                p->refresh = cack->us_refresh * NNI_SECOND;
-            }
-            now = nni_clock();
-            p->next_wake = now + UDP_PIPE_REFRESH(p);
-            p->expire = now + UDP_PIPE_TIMEOUT(p);
-            udp_pipe_schedule(p);
-            
-                if (p->state < PIPE_CONN_MATCH) {
-                    p->state = PIPE_CONN_MATCH;
-                    nni_list_append(&ep->connpipes, p);
-                    udp_ep_match(ep);
-                }
+
+    if ((p = udp_find_pipe(ep, sa)) && (!p->closed)) {
+        if (p->peer != cack->us_type) {
+            udp_send_disc(ep, p, DISC_TYPE);
             return;
         }
+
+        // so we know who it is from.. this is a refresh.
+        p->sndmax = cack->us_recvmax;
+        p->peer = cack->us_type;
+
+        if (cack->us_refresh == 0) {
+            udp_send_disc(ep, p, DISC_NEGO);
+            return;
+        }
+        // Always reset this, as dialers may have started with an
+        // unreasonably low value.
+        p->refresh = ep->refresh;
+        if ((cack->us_refresh * NNI_SECOND) < p->refresh) {
+            p->refresh = cack->us_refresh * NNI_SECOND;
+        }
+        now = nni_clock();
+        p->next_wake = now + UDP_PIPE_REFRESH(p);
+        p->expire = now + UDP_PIPE_TIMEOUT(p);
+        udp_pipe_schedule(p);
+
+        if (p->state < PIPE_CONN_MATCH) {
+            p->state = PIPE_CONN_MATCH;
+            nni_list_append(&ep->connpipes, p);
+            udp_ep_match(ep);
+        }
+        return;
+    }
 }
 
 static void
 udp_tx_cb(void *arg)
 {
     udp_ep *ep = arg;
-    
-        nni_mtx_lock(&ep->mtx);
+
+    nni_mtx_lock(&ep->mtx);
     udp_finish_tx(ep);
     nni_mtx_unlock(&ep->mtx);
 }
@@ -852,13 +852,13 @@ udp_rx_cb(void *arg)
     udp_sp_msg *hdr;
     nng_sockaddr *sa;
     nni_aio_completions complq;
-    
-        // for a received packet we are either receiving it for a
-        // connection we already have established, or for a new connection.
-        // Dialers cannot receive connection requests (as a safety
-        // precaution).
-        
-        nni_mtx_lock(&ep->mtx);
+
+    // for a received packet we are either receiving it for a
+    // connection we already have established, or for a new connection.
+    // Dialers cannot receive connection requests (as a safety
+    // precaution).
+
+    nni_mtx_lock(&ep->mtx);
     if ((rv = nni_aio_result(aio)) != 0) {
         // something bad happened on RX... which is unexpected.
         // sleep a little bit and hope for recovery.
@@ -885,78 +885,78 @@ udp_rx_cb(void *arg)
         ep->cooldown = false;
         goto finish;
     }
-    
-        // Received message will be in the ep rx header.
-        hdr = ep->rx_msg;
+
+    // Received message will be in the ep rx header.
+    hdr = ep->rx_msg;
     sa = &ep->rx_sa;
     n = nng_aio_count(aio);
-    
-        if ((n >= sizeof(*hdr)) && (hdr->us_ver == 1)) {
-            n -= sizeof(*hdr);
-            
+
+    if ((n >= sizeof(*hdr)) && (hdr->us_ver == 1)) {
+        n -= sizeof(*hdr);
+
 #ifndef NNG_LITTLE_ENDIAN
-                // Fix the endianness, so other routines don't have to.
-                // We only have to do this for systems that are not known
-                // (at compile time) to be little endian.
-                hdr->us_type = NNI_GET16LE(&hdr->us_type);
-            hdr->us_params[0] = NNI_GET16LE(&hdr->us_params[0]);
-            hdr->us_params[1] = NNI_GET16LE(&hdr->us_params[1]);
+        // Fix the endianness, so other routines don't have to.
+        // We only have to do this for systems that are not known
+        // (at compile time) to be little endian.
+        hdr->us_type = NNI_GET16LE(&hdr->us_type);
+        hdr->us_params[0] = NNI_GET16LE(&hdr->us_params[0]);
+        hdr->us_params[1] = NNI_GET16LE(&hdr->us_params[1]);
 #endif
-            
-                switch (hdr->us_op_code) {
-                    case OPCODE_DATA:
-                        udp_recv_data(ep, hdr, n, sa);
-                        break;
-                    case OPCODE_CREQ:
-                        udp_recv_creq(ep, hdr, sa);
-                        break;
-                    case OPCODE_CACK:
-                        udp_recv_cack(ep, hdr, sa);
-                        break;
-                    case OPCODE_DISC:
-                        udp_recv_disc(ep, hdr, sa);
-                        break;
-                    case OPCODE_MESH: // TODO:
-                                      // udp_recv_mesh(ep, &hdr->mesh, sa);
-                                      // break;
-                    default:
-                        udp_send_disc_full(ep, sa, DISC_PROTO);
-                        break;
-                }
+
+        switch (hdr->us_op_code) {
+            case OPCODE_DATA:
+                udp_recv_data(ep, hdr, n, sa);
+                break;
+            case OPCODE_CREQ:
+                udp_recv_creq(ep, hdr, sa);
+                break;
+            case OPCODE_CACK:
+                udp_recv_cack(ep, hdr, sa);
+                break;
+            case OPCODE_DISC:
+                udp_recv_disc(ep, hdr, sa);
+                break;
+            case OPCODE_MESH: // TODO:
+                              // udp_recv_mesh(ep, &hdr->mesh, sa);
+                              // break;
+            default:
+                udp_send_disc_full(ep, sa, DISC_PROTO);
+                break;
         }
-    
-        finish:
-        // start another receive
-        udp_start_rx(ep);
-    
-        // grab the list of completions so we can finish them.
-        complq = ep->complq;
+    }
+
+finish:
+    // start another receive
+    udp_start_rx(ep);
+
+    // grab the list of completions so we can finish them.
+    complq = ep->complq;
     nni_aio_completions_init(&ep->complq);
-    
-        // Collect deferred pipe closes before releasing the lock.
-        // udp_recv_disc appends pipes here instead of calling
-        // nni_pipe_close directly (which would deadlock since
-        // ep->mtx is held here).
-        nni_list defer_closes;
+
+    // Collect deferred pipe closes before releasing the lock.
+    // udp_recv_disc appends pipes here instead of calling
+    // nni_pipe_close directly (which would deadlock since
+    // ep->mtx is held here).
+    nni_list defer_closes;
     NNI_LIST_INIT(&defer_closes, udp_pipe, node);
     udp_pipe *defer_p;
     while ((defer_p = nni_list_first(&ep->defer_close_list)) != NULL) {
         nni_list_remove(&ep->defer_close_list, defer_p);
         nni_list_append(&defer_closes, defer_p);
     }
-    
-        nni_mtx_unlock(&ep->mtx);
-    
-        // Process deferred pipe closes outside the lock.
-        // nni_pipe_close -> pipe_reap -> udp_pipe_close acquires ep->mtx,
-        // so we must NOT call it while holding the lock.
-        while ((defer_p = nni_list_first(&defer_closes)) != NULL) {
-            nni_list_remove(&defer_closes, defer_p);
-            nni_pipe_close(defer_p->npipe);
-        }
-    
-        // now run the completions -- synchronously
-        nni_aio_completions_run(&complq);
+
+    nni_mtx_unlock(&ep->mtx);
+
+    // Process deferred pipe closes outside the lock.
+    // nni_pipe_close -> pipe_reap -> udp_pipe_close acquires ep->mtx,
+    // so we must NOT call it while holding the lock.
+    while ((defer_p = nni_list_first(&defer_closes)) != NULL) {
+        nni_list_remove(&defer_closes, defer_p);
+        nni_pipe_close(defer_p->npipe);
+    }
+
+    // now run the completions -- synchronously
+    nni_aio_completions_run(&complq);
 }
 
 static void
@@ -967,15 +967,15 @@ udp_pipe_send(void *arg, nni_aio *aio)
     udp_sp_msg dreq;
     nng_msg *msg;
     size_t count = 0;
-    
-        msg = nni_aio_get_msg(aio);
+
+    msg = nni_aio_get_msg(aio);
     ep = p->ep;
-    
-        if (msg != NULL) {
-            count = nni_msg_len(msg) + nni_msg_header_len(msg);
-        }
-    
-        nni_aio_reset(aio);
+
+    if (msg != NULL) {
+        count = nni_msg_len(msg) + nni_msg_header_len(msg);
+    }
+
+    nni_aio_reset(aio);
     nni_mtx_lock(&ep->mtx);
     if ((nni_msg_len(msg) + nni_msg_header_len(msg)) > p->sndmax) {
         nni_mtx_unlock(&ep->mtx);
@@ -988,17 +988,17 @@ udp_pipe_send(void *arg, nni_aio *aio)
         nni_msg_free(msg);
         return;
     }
-    
-        dreq.us_ver = 1;
+
+    dreq.us_ver = 1;
     dreq.us_type = ep->proto;
     dreq.us_op_code = OPCODE_DATA;
     dreq.us_length = (uint16_t) count;
-    
-        // Just queue it, or fail it.
-        udp_queue_tx(ep, &p->peer_addr, (void *) &dreq, msg);
+
+    // Just queue it, or fail it.
+    udp_queue_tx(ep, &p->peer_addr, (void *) &dreq, msg);
     nni_mtx_unlock(&ep->mtx);
-    
-        nni_aio_finish(aio, 0, count);
+
+    nni_aio_finish(aio, 0, count);
 }
 
 static void
@@ -1006,8 +1006,8 @@ udp_pipe_recv_cancel(nni_aio *aio, void *arg, nng_err rv)
 {
     udp_pipe *p = arg;
     udp_ep *ep = p->ep;
-    
-        nni_mtx_lock(&ep->mtx);
+
+    nni_mtx_lock(&ep->mtx);
     if (!nni_aio_list_active(aio)) {
         nni_mtx_unlock(&ep->mtx);
         return;
@@ -1023,8 +1023,8 @@ udp_pipe_recv(void *arg, nni_aio *aio)
     udp_pipe *p = arg;
     udp_ep *ep = p->ep;
     nni_msg *msg;
-    
-        nni_aio_reset(aio);
+
+    nni_aio_reset(aio);
     nni_mtx_lock(&ep->mtx);
     if (p->closed) {
         nni_mtx_unlock(&ep->mtx);
@@ -1053,8 +1053,8 @@ static uint16_t
 udp_pipe_peer(void *arg)
 {
     udp_pipe *p = arg;
-    
-        return (p->peer);
+
+    return (p->peer);
 }
 
 static nng_err
@@ -1085,8 +1085,8 @@ udp_pipe_getopt(
 {
     udp_pipe *p = arg;
     int rv;
-    
-        rv = nni_getopt(udp_pipe_options, name, p, buf, szp, t);
+
+    rv = nni_getopt(udp_pipe_options, name, p, buf, szp, t);
     return (rv);
 }
 
@@ -1094,20 +1094,20 @@ static void
 udp_ep_fini(void *arg)
 {
     udp_ep *ep = arg;
-    
-        nni_aio_fini(&ep->timeaio);
+
+    nni_aio_fini(&ep->timeaio);
     nni_aio_fini(&ep->resaio);
     nni_aio_fini(&ep->tx_aio);
     nni_aio_fini(&ep->rx_aio);
-    
-        if (ep->udp != NULL) {
-            nng_udp_close(ep->udp);
-        }
-    
-        for (int i = 0; i < ep->tx_ring.size; i++) {
-            nni_msg_free(ep->tx_ring.descs[i].payload);
-            ep->tx_ring.descs[i].payload = NULL;
-        }
+
+    if (ep->udp != NULL) {
+        nng_udp_close(ep->udp);
+    }
+
+    for (int i = 0; i < ep->tx_ring.size; i++) {
+        nni_msg_free(ep->tx_ring.descs[i].payload);
+        ep->tx_ring.descs[i].payload = NULL;
+    }
     nni_msg_free(ep->rx_payload); // safe even if msg is null
     nni_id_map_fini(&ep->pipes);
     NNI_FREE_STRUCTS(ep->tx_ring.descs, ep->tx_ring.size);
@@ -1121,19 +1121,19 @@ udp_ep_close(void *arg)
     nni_aio *aio;
     uint32_t cursor;
     uint64_t key;
-    
-        nni_mtx_lock(&ep->mtx);
+
+    nni_mtx_lock(&ep->mtx);
     ep->closed = true;
-    
-        // leave tx open so we can send disconnects
-        nni_aio_close(&ep->resaio);
+
+    // leave tx open so we can send disconnects
+    nni_aio_close(&ep->resaio);
     nni_aio_close(&ep->rx_aio);
     nni_aio_close(&ep->timeaio);
-    
-        // close all the underlying pipes, so the peer can see it.
-        while (nni_id_visit(&ep->pipes, &key, (void **) &p, &cursor)) {
-            nni_pipe_close(p->npipe);
-        }
+
+    // close all the underlying pipes, so the peer can see it.
+    while (nni_id_visit(&ep->pipes, &key, (void **) &p, &cursor)) {
+        nni_pipe_close(p->npipe);
+    }
     while ((aio = nni_list_first(&ep->connaios)) != NULL) {
         nni_aio_list_remove(aio);
         nni_aio_finish_error(aio, NNG_ECONNABORTED);
@@ -1145,15 +1145,15 @@ static void
 udp_ep_stop(void *arg)
 {
     udp_ep *ep = arg;
-    
-        nni_aio_stop(&ep->resaio);
+
+    nni_aio_stop(&ep->resaio);
     nni_aio_stop(&ep->rx_aio);
     nni_aio_stop(&ep->timeaio);
-    
-        // We optionally linger a little bit (up to a half second)
-        // so that the disconnect messages can get pushed out. On
-        // most systems this should only take a single millisecond.
-        nni_time linger =
+
+    // We optionally linger a little bit (up to a half second)
+    // so that the disconnect messages can get pushed out. On
+    // most systems this should only take a single millisecond.
+    nni_time linger =
         nni_clock() + NNI_SECOND / 2; // half second to drain, max
     nni_mtx_lock(&ep->mtx);
     while ((ep->tx_ring.count > 0) && (nni_clock() < linger)) {
@@ -1168,9 +1168,9 @@ udp_ep_stop(void *arg)
     }
     ep->stopped = true;
     nni_mtx_unlock(&ep->mtx);
-    
-        // finally close the tx channel
-        nni_aio_stop(&ep->tx_aio);
+
+    // finally close the tx channel
+    nni_aio_stop(&ep->tx_aio);
 }
 
 // timer handler - sends out additional creqs as needed,
@@ -1181,8 +1181,8 @@ udp_timer_cb(void *arg)
     udp_ep *ep = arg;
     udp_pipe *p;
     int rv;
-    
-        nni_mtx_lock(&ep->mtx);
+
+    nni_mtx_lock(&ep->mtx);
     rv = nni_aio_result(&ep->timeaio);
     switch (rv) {
         case NNG_ECLOSED:
@@ -1197,108 +1197,108 @@ udp_timer_cb(void *arg)
             }
             break;
     }
-    
-        uint32_t cursor = 0;
+
+    uint32_t cursor = 0;
     nni_time now = nni_clock();
     nng_duration refresh = ep->refresh;
-    
-        // Lists for deferred processing outside the lock.
-        nni_list reap_list;
+
+    // Lists for deferred processing outside the lock.
+    nni_list reap_list;
     NNI_LIST_INIT(&reap_list, udp_pipe, node);
-    
-        ep->next_wake = NNI_TIME_NEVER;
+
+    ep->next_wake = NNI_TIME_NEVER;
     while (nni_id_visit(&ep->pipes, NULL, (void **) &p, &cursor)) {
-        
-            if (now > p->expire) {
-                char buf[128];
-                nni_aio *aio;
-                nng_log_info("NNG-UDP-INACTIVE",
-                        "Pipe peer %s timed out due to inactivity",
-                        nng_str_sockaddr(&p->peer_addr, buf, sizeof(buf)));
-                
-                    // Possibly alert the dialer, so it can restart a
-                    // new attempt.
-                    if ((ep->dialer) && (p->peer_id == 0) &&
-                            (aio = nni_list_first(&ep->connaios))) {
-                        nni_aio_list_remove(aio);
-                        nni_aio_finish_error(aio, NNG_ETIMEDOUT);
-                    }
-                
-                    if (!p->dialer) {
-                        nni_stat_inc(&ep->st_peer_inactive, 1);
-                    }
-                udp_send_disc(ep, p, DISC_INACTIVE);
-                nni_list_node_remove(&p->node);
-                nni_list_append(&reap_list, p);
-                continue;
+
+        if (now > p->expire) {
+            char buf[128];
+            nni_aio *aio;
+            nng_log_info("NNG-UDP-INACTIVE",
+                    "Pipe peer %s timed out due to inactivity",
+                    nng_str_sockaddr(&p->peer_addr, buf, sizeof(buf)));
+
+            // Possibly alert the dialer, so it can restart a
+            // new attempt.
+            if ((ep->dialer) && (p->peer_id == 0) &&
+                    (aio = nni_list_first(&ep->connaios))) {
+                nni_aio_list_remove(aio);
+                nni_aio_finish_error(aio, NNG_ETIMEDOUT);
             }
-        
-            if (p->dialer && now > p->next_creq) {
-                udp_send_creq(ep, p);
+
+            if (!p->dialer) {
+                nni_stat_inc(&ep->st_peer_inactive, 1);
             }
-        
-            // Update next wake time.
-            //
-            // We must consider expire so the timer wakes up to reap
-            // inactive pipes. However, we must NOT use next_wake if
-            // it is in the past — that would set refresh to 0 and
-            // cause a busy-spin loop consuming 100% CPU.
-            //
-            // For listener pipes, next_wake is only updated on
-            // receive (in udp_recv_data / udp_recv_creq). When the
-            // peer stops sending, next_wake goes stale (in the past)
-            // while expire is still future. The timer should only
-            // wake when expire fires to reap the pipe, not spin on
-            // the stale next_wake.
-            if (p->expire < ep->next_wake) {
-                ep->next_wake = p->expire;
-            }
+            udp_send_disc(ep, p, DISC_INACTIVE);
+            nni_list_node_remove(&p->node);
+            nni_list_append(&reap_list, p);
+            continue;
+        }
+
+        if (p->dialer && now > p->next_creq) {
+            udp_send_creq(ep, p);
+        }
+
+        // Update next wake time.
+        //
+        // We must consider expire so the timer wakes up to reap
+        // inactive pipes. However, we must NOT use next_wake if
+        // it is in the past — that would set refresh to 0 and
+        // cause a busy-spin loop consuming 100% CPU.
+        //
+        // For listener pipes, next_wake is only updated on
+        // receive (in udp_recv_data / udp_recv_creq). When the
+        // peer stops sending, next_wake goes stale (in the past)
+        // while expire is still future. The timer should only
+        // wake when expire fires to reap the pipe, not spin on
+        // the stale next_wake.
+        if (p->expire < ep->next_wake) {
+            ep->next_wake = p->expire;
+        }
         if (p->next_wake > now && p->next_wake < ep->next_wake) {
             ep->next_wake = p->next_wake;
         }
     }
-    
-        // Phase 2: Remove reaped pipes from ep->pipes map and separate
-        // into close_list (non-dialer, need nni_pipe_close) and
-        // recon_list (dialer, need reconnect).
-        nni_list close_list;
+
+    // Phase 2: Remove reaped pipes from ep->pipes map and separate
+    // into close_list (non-dialer, need nni_pipe_close) and
+    // recon_list (dialer, need reconnect).
+    nni_list close_list;
     NNI_LIST_INIT(&close_list, udp_pipe, node);
     nni_list recon_list;
     NNI_LIST_INIT(&recon_list, udp_pipe, node);
-    
-        while ((p = nni_list_first(&reap_list)) != NULL) {
-            nni_list_remove(&reap_list, p);
-            udp_remove_pipe(p);
-            
-                if (p->dialer) {
-                    nni_list_append(&recon_list, p);
-                } else if (p->npipe != NULL) {
-                    nni_list_append(&close_list, p);
-                }
+
+    while ((p = nni_list_first(&reap_list)) != NULL) {
+        nni_list_remove(&reap_list, p);
+        udp_remove_pipe(p);
+
+        if (p->dialer) {
+            nni_list_append(&recon_list, p);
+        } else if (p->npipe != NULL) {
+            nni_list_append(&close_list, p);
         }
-    
-        // Calculate next timer
-        refresh = ep->next_wake == NNI_TIME_NEVER
+    }
+
+    // Calculate next timer
+    refresh = ep->next_wake == NNI_TIME_NEVER
         ? NNG_DURATION_INFINITE
         : (nng_duration) (ep->next_wake - now);
     if (refresh < 0) {
         refresh = 0; // expire already passed, wake immediately
     }
     nni_sleep_aio(refresh, &ep->timeaio);
-    
-        nni_mtx_unlock(&ep->mtx);
-    
-        // Phase 3: Close non-dialer pipes outside the lock.
-        // nni_pipe_close -> pipe_reap -> udp_pipe_close acquires ep->mtx,
-        // so we must NOT call it while holding the lock.
-        while ((p = nni_list_first(&close_list)) != NULL) {
-            nni_list_remove(&close_list, p);
-            nni_pipe_close(p->npipe);
-        }
-    
-        // Phase 4: Handle dialer reconnection.
-        // Close the old npipe first, then create a new pipe for reconnection.
-        bool has_dialer_reconn = false;
+
+    nni_mtx_unlock(&ep->mtx);
+
+    // Phase 3: Close non-dialer pipes outside the lock.
+    // nni_pipe_close -> pipe_reap -> udp_pipe_close acquires ep->mtx,
+    // so we must NOT call it while holding the lock.
+    while ((p = nni_list_first(&close_list)) != NULL) {
+        nni_list_remove(&close_list, p);
+        nni_pipe_close(p->npipe);
+    }
+
+    // Phase 4: Handle dialer reconnection.
+    // Close the old npipe first, then create a new pipe for reconnection.
+    bool has_dialer_reconn = false;
     while ((p = nni_list_first(&recon_list)) != NULL) {
         nni_list_remove(&recon_list, p);
         if (p->npipe != NULL) {
@@ -1306,24 +1306,24 @@ udp_timer_cb(void *arg)
         }
         has_dialer_reconn = true;
     }
-    
-        // For dialer reconnection, trigger a new connection attempt.
-        if (has_dialer_reconn && ep->dialer) {
-            nni_mtx_lock(&ep->mtx);
-            if (!ep->closed && ep->started) {
-                nni_aio *aio = nni_list_first(&ep->connaios);
-                if (aio != NULL) {
-                    int rv2 = udp_ep_redial(ep);
-                    if (rv2 != 0) {
-                        nni_aio_list_remove(aio);
-                        nni_mtx_unlock(&ep->mtx);
-                        nni_aio_finish_error(aio, rv2);
-                        return;
-                    }
+
+    // For dialer reconnection, trigger a new connection attempt.
+    if (has_dialer_reconn && ep->dialer) {
+        nni_mtx_lock(&ep->mtx);
+        if (!ep->closed && ep->started) {
+            nni_aio *aio = nni_list_first(&ep->connaios);
+            if (aio != NULL) {
+                int rv2 = udp_ep_redial(ep);
+                if (rv2 != 0) {
+                    nni_aio_list_remove(aio);
+                    nni_mtx_unlock(&ep->mtx);
+                    nni_aio_finish_error(aio, rv2);
+                    return;
                 }
             }
-            nni_mtx_unlock(&ep->mtx);
         }
+        nni_mtx_unlock(&ep->mtx);
+    }
 }
 
 static int
@@ -1331,40 +1331,40 @@ udp_ep_init(
         udp_ep *ep, nng_url *url, nni_sock *sock, nni_dialer *d, nni_listener *l)
 {
     int rv;
-    
-        nni_mtx_init(&ep->mtx);
+
+    nni_mtx_init(&ep->mtx);
     nni_id_map_init(&ep->pipes, 1, 0xFFFFFFFF, true);
     NNI_LIST_INIT(&ep->connpipes, udp_pipe, node);
     NNI_LIST_INIT(&ep->defer_close_list, udp_pipe, node);
     nni_aio_list_init(&ep->connaios);
-    
-        nni_aio_init(&ep->rx_aio, udp_rx_cb, ep);
+
+    nni_aio_init(&ep->rx_aio, udp_rx_cb, ep);
     nni_aio_init(&ep->tx_aio, udp_tx_cb, ep);
     nni_aio_init(&ep->timeaio, udp_timer_cb, ep);
     nni_aio_init(&ep->resaio, udp_resolv_cb, ep);
     nni_aio_completions_init(&ep->complq);
-    
-        ep->next_wake = NNI_TIME_NEVER;
-    
-        ep->tx_ring.descs =
+
+    ep->next_wake = NNI_TIME_NEVER;
+
+    ep->tx_ring.descs =
         NNI_ALLOC_STRUCTS(ep->tx_ring.descs, NNG_UDP_TXQUEUE_LEN);
     if (ep->tx_ring.descs == NULL) {
         NNI_FREE_STRUCT(ep);
         return (NNG_ENOMEM);
     }
     ep->tx_ring.size = NNG_UDP_TXQUEUE_LEN;
-    
-        if (strcmp(url->u_scheme, "udp") == 0) {
-            ep->af = NNG_AF_UNSPEC;
-        } else if (strcmp(url->u_scheme, "udp4") == 0) {
-            ep->af = NNG_AF_INET;
-        } else if (strcmp(url->u_scheme, "udp6") == 0) {
-            ep->af = NNG_AF_INET6;
-        } else {
-            return (NNG_EADDRINVAL);
-        }
-    
-        ep->self_sa.s_family = ep->af;
+
+    if (strcmp(url->u_scheme, "udp") == 0) {
+        ep->af = NNG_AF_UNSPEC;
+    } else if (strcmp(url->u_scheme, "udp4") == 0) {
+        ep->af = NNG_AF_INET;
+    } else if (strcmp(url->u_scheme, "udp6") == 0) {
+        ep->af = NNG_AF_INET6;
+    } else {
+        return (NNG_EADDRINVAL);
+    }
+
+    ep->self_sa.s_family = ep->af;
     ep->proto = nni_sock_proto_id(sock);
     ep->peer = nni_sock_peer_id(sock);
     ep->url = url;
@@ -1378,9 +1378,9 @@ udp_ep_init(
         NNI_FREE_STRUCTS(ep->tx_ring.descs, NNG_UDP_TXQUEUE_LEN);
         return (rv);
     }
-    
-        NNI_STAT_LOCK(rcv_max_info, "rcv_max", "maximum receive size",
-                NNG_STAT_LEVEL, NNG_UNIT_BYTES);
+
+    NNI_STAT_LOCK(rcv_max_info, "rcv_max", "maximum receive size",
+            NNG_STAT_LEVEL, NNG_UNIT_BYTES);
     NNI_STAT_LOCK(copy_max_info, "copy_max",
             "threshold to switch to loan-up", NNG_STAT_LEVEL, NNG_UNIT_BYTES);
     NNI_STAT_LOCK(rcv_nomatch_info, "rcv_nomatch",
@@ -1412,8 +1412,8 @@ udp_ep_init(
     NNI_STAT_LOCK(peer_reject_info, "peer_reject",
             "connection requests rejected at the peer limit", NNG_STAT_COUNTER,
             NNG_UNIT_MESSAGES);
-    
-        nni_stat_init_lock(&ep->st_rcv_max, &rcv_max_info, &ep->mtx);
+
+    nni_stat_init_lock(&ep->st_rcv_max, &rcv_max_info, &ep->mtx);
     nni_stat_init_lock(&ep->st_copy_max, &copy_max_info, &ep->mtx);
     nni_stat_init_lock(&ep->st_rcv_copy, &rcv_copy_info, &ep->mtx);
     nni_stat_init_lock(&ep->st_rcv_nocopy, &rcv_nocopy_info, &ep->mtx);
@@ -1427,21 +1427,21 @@ udp_ep_init(
     nni_stat_init_lock(&ep->st_peer_max, &peer_max_info, &ep->mtx);
     nni_stat_init_lock(&ep->st_peer_reject, &peer_reject_info, &ep->mtx);
     nni_stat_set_value(&ep->st_peer_max, ep->max_peers);
-    
-        if (l) {
-            NNI_ASSERT(d == NULL);
-            nni_listener_add_stat(l, &ep->st_rcv_max);
-            nni_listener_add_stat(l, &ep->st_copy_max);
-            nni_listener_add_stat(l, &ep->st_rcv_copy);
-            nni_listener_add_stat(l, &ep->st_rcv_nocopy);
-            nni_listener_add_stat(l, &ep->st_rcv_toobig);
-            nni_listener_add_stat(l, &ep->st_rcv_nomatch);
-            nni_listener_add_stat(l, &ep->st_rcv_nobuf);
-            nni_listener_add_stat(l, &ep->st_snd_toobig);
-            nni_listener_add_stat(l, &ep->st_snd_nobuf);
-            nni_listener_add_stat(l, &ep->st_peer_max);
-            nni_listener_add_stat(l, &ep->st_peer_reject);
-        }
+
+    if (l) {
+        NNI_ASSERT(d == NULL);
+        nni_listener_add_stat(l, &ep->st_rcv_max);
+        nni_listener_add_stat(l, &ep->st_copy_max);
+        nni_listener_add_stat(l, &ep->st_rcv_copy);
+        nni_listener_add_stat(l, &ep->st_rcv_nocopy);
+        nni_listener_add_stat(l, &ep->st_rcv_toobig);
+        nni_listener_add_stat(l, &ep->st_rcv_nomatch);
+        nni_listener_add_stat(l, &ep->st_rcv_nobuf);
+        nni_listener_add_stat(l, &ep->st_snd_toobig);
+        nni_listener_add_stat(l, &ep->st_snd_nobuf);
+        nni_listener_add_stat(l, &ep->st_peer_max);
+        nni_listener_add_stat(l, &ep->st_peer_reject);
+    }
     if (d) {
         NNI_ASSERT(l == NULL);
         nni_dialer_add_stat(d, &ep->st_rcv_max);
@@ -1456,13 +1456,13 @@ udp_ep_init(
         nni_dialer_add_stat(d, &ep->st_peer_max);
         nni_dialer_add_stat(d, &ep->st_peer_reject);
     }
-    
-        // schedule our timer callback - forever for now
-        // adjusted automatically as we add pipes or other
-        // actions which require earlier wakeup.
-        nni_sleep_aio(NNG_DURATION_INFINITE, &ep->timeaio);
-    
-        return (0);
+
+    // schedule our timer callback - forever for now
+    // adjusted automatically as we add pipes or other
+    // actions which require earlier wakeup.
+    nni_sleep_aio(NNG_DURATION_INFINITE, &ep->timeaio);
+
+    return (0);
 }
 
 static int
@@ -1490,17 +1490,17 @@ udp_dialer_init(void *arg, nng_url *url, nni_dialer *ndialer)
     udp_ep *ep = arg;
     nng_err rv;
     nni_sock *sock = nni_dialer_sock(ndialer);
-    
-        ep->ndialer = ndialer;
+
+    ep->ndialer = ndialer;
     if ((rv = udp_ep_init(ep, url, sock, ndialer, NULL)) != NNG_OK) {
         return (rv);
     }
-    
-        if ((rv = udp_check_url(url, false)) != NNG_OK) {
-            return (rv);
-        }
-    
-        return (NNG_OK);
+
+    if ((rv = udp_check_url(url, false)) != NNG_OK) {
+        return (rv);
+    }
+
+    return (NNG_OK);
 }
 
 static nng_err
@@ -1509,8 +1509,8 @@ udp_listener_init(void *arg, nng_url *url, nni_listener *nlistener)
     udp_ep *ep = arg;
     nng_err rv;
     nni_sock *sock = nni_listener_sock(nlistener);
-    
-        ep->nlistener = nlistener;
+
+    ep->nlistener = nlistener;
     if ((rv = udp_ep_init(ep, url, sock, NULL, nlistener)) != NNG_OK) {
         return (rv);
     }
@@ -1519,8 +1519,8 @@ udp_listener_init(void *arg, nng_url *url, nni_listener *nlistener)
             ((rv = nni_url_to_address(&ep->self_sa, url)) != NNG_OK)) {
         return (rv);
     }
-    
-        return (0);
+
+    return (0);
 }
 
 static void
@@ -1562,29 +1562,29 @@ udp_resolv_cb(void *arg)
         nni_aio_finish_error(aio, rv);
         return;
     }
-    
-        // Choose the right port to bind to. The family must match.
-        if (ep->self_sa.s_family == NNG_AF_UNSPEC) {
-            ep->self_sa.s_family = ep->peer_sa.s_family;
-        }
-    
-        if (ep->udp == NULL) {
-            if ((rv = nng_udp_open(&ep->udp, &ep->self_sa)) != NNG_OK) {
-                nni_aio_list_remove(aio);
-                nni_mtx_unlock(&ep->mtx);
-                nni_aio_finish_error(aio, rv);
-                return;
-            }
-        }
-    
-        // places a "hold" on the ep
-        if ((rv = nni_pipe_alloc_dialer((void **) &p, ep->ndialer)) !=
-                NNG_OK) {
+
+    // Choose the right port to bind to. The family must match.
+    if (ep->self_sa.s_family == NNG_AF_UNSPEC) {
+        ep->self_sa.s_family = ep->peer_sa.s_family;
+    }
+
+    if (ep->udp == NULL) {
+        if ((rv = nng_udp_open(&ep->udp, &ep->self_sa)) != NNG_OK) {
             nni_aio_list_remove(aio);
             nni_mtx_unlock(&ep->mtx);
             nni_aio_finish_error(aio, rv);
             return;
         }
+    }
+
+    // places a "hold" on the ep
+    if ((rv = nni_pipe_alloc_dialer((void **) &p, ep->ndialer)) !=
+            NNG_OK) {
+        nni_aio_list_remove(aio);
+        nni_mtx_unlock(&ep->mtx);
+        nni_aio_finish_error(aio, rv);
+        return;
+    }
     if ((rv = udp_pipe_start(p, ep, &ep->peer_sa)) != NNG_OK) {
         nni_aio_list_remove(aio);
         nni_pipe_close(p->npipe);
@@ -1592,15 +1592,15 @@ udp_resolv_cb(void *arg)
         nni_aio_finish_error(aio, rv);
         return;
     }
-    
-        udp_pipe_schedule(p);
+
+    udp_pipe_schedule(p);
     udp_ep_start(ep);
-    
-        // Send out the connection request. We don't complete
-        // the user aio until we confirm a connection, so that
-        // we can supply details like maximum receive message size
-        // and the protocol the peer is using.
-        udp_send_creq(ep, p);
+
+    // Send out the connection request. We don't complete
+    // the user aio until we confirm a connection, so that
+    // we can supply details like maximum receive message size
+    // and the protocol the peer is using.
+    udp_send_creq(ep, p);
     nni_mtx_unlock(&ep->mtx);
 }
 
@@ -1648,42 +1648,42 @@ udp_ep_redial(udp_ep *ep)
 {
     udp_pipe *p;
     nng_err rv;
-    
-        NNI_ASSERT(ep->udp != NULL);
+
+    NNI_ASSERT(ep->udp != NULL);
     NNI_ASSERT(ep->started);
-    
-        // Clean up any stale closed pipes for the same peer address,
-        // so the new pipe can be added at the canonical hash slot
-        // and will be found by udp_find_pipe.
-        udp_ep_cleanup_closed_pipes(ep, &ep->peer_sa);
-    
-        // places a "hold" on the ep
-        if ((rv = nni_pipe_alloc_dialer((void **) &p, ep->ndialer)) !=
-                NNG_OK) {
-            return (rv);
-        }
+
+    // Clean up any stale closed pipes for the same peer address,
+    // so the new pipe can be added at the canonical hash slot
+    // and will be found by udp_find_pipe.
+    udp_ep_cleanup_closed_pipes(ep, &ep->peer_sa);
+
+    // places a "hold" on the ep
+    if ((rv = nni_pipe_alloc_dialer((void **) &p, ep->ndialer)) !=
+            NNG_OK) {
+        return (rv);
+    }
     if ((rv = udp_pipe_start(p, ep, &ep->peer_sa)) != NNG_OK) {
         nni_pipe_close(p->npipe);
         return (rv);
     }
-    
-        udp_pipe_schedule(p);
-    
-        // Send out the connection request. We don't complete
-        // the user aio until we confirm a connection, so that
-        // we can supply details like maximum receive message size
-        // and the protocol the peer is using.
-        udp_send_creq(ep, p);
-    
-        return (0);
+
+    udp_pipe_schedule(p);
+
+    // Send out the connection request. We don't complete
+    // the user aio until we confirm a connection, so that
+    // we can supply details like maximum receive message size
+    // and the protocol the peer is using.
+    udp_send_creq(ep, p);
+
+    return (0);
 }
 
 static void
 udp_ep_connect(void *arg, nni_aio *aio)
 {
     udp_ep *ep = arg;
-    
-        nni_mtx_lock(&ep->mtx);
+
+    nni_mtx_lock(&ep->mtx);
     if (!nni_aio_start(aio, udp_ep_cancel, ep)) {
         nni_mtx_unlock(&ep->mtx);
         return;
@@ -1719,12 +1719,11 @@ udp_ep_connect(void *arg, nni_aio *aio)
     }
     NNI_ASSERT(nni_list_empty(&ep->connaios));
     ep->dialer = true;
-    
-        nni_list_append(&ep->connaios, aio);
-    
-        // lookup the IP address
-        
-        memset(&ep->resolv, 0, sizeof(ep->resolv));
+
+    nni_list_append(&ep->connaios, aio);
+
+    // lookup the IP address
+    memset(&ep->resolv, 0, sizeof(ep->resolv));
     ep->resolv.ri_family = ep->af;
     ep->resolv.ri_host = ep->url->u_hostname;
     ep->resolv.ri_port = ep->url->u_port;
@@ -1732,11 +1731,11 @@ udp_ep_connect(void *arg, nni_aio *aio)
     ep->resolv.ri_sa = &ep->peer_sa;
     nni_aio_set_timeout(&ep->resaio, NNI_SECOND * 5);
     nni_resolv(&ep->resolv, &ep->resaio);
-    
-        // wake up for retries
-        nni_aio_abort(&ep->timeaio, NNG_EINTR);
-    
-        nni_mtx_unlock(&ep->mtx);
+
+    // wake up for retries
+    nni_aio_abort(&ep->timeaio, NNG_EINTR);
+
+    nni_mtx_unlock(&ep->mtx);
 }
 
 static nng_err
@@ -1746,8 +1745,8 @@ udp_ep_get_port(void *arg, void *buf, size_t *szp, nni_type t)
     nng_sockaddr sa;
     int port;
     uint8_t *paddr;
-    
-        nni_mtx_lock(&ep->mtx);
+
+    nni_mtx_lock(&ep->mtx);
     if (ep->udp != NULL) {
         (void) nng_udp_sockname(ep->udp, &sa);
     } else {
@@ -1757,22 +1756,22 @@ udp_ep_get_port(void *arg, void *buf, size_t *szp, nni_type t)
         case NNG_AF_INET:
             paddr = (void *) &sa.s_in.sa_port;
             break;
-            
+
         case NNG_AF_INET6:
-                paddr = (void *) &sa.s_in6.sa_port;
-                break;
-                
+            paddr = (void *) &sa.s_in6.sa_port;
+            break;
+
         default:
-                    paddr = NULL;
-                    break;
+            paddr = NULL;
+            break;
     }
     nni_mtx_unlock(&ep->mtx);
-    
-        if (paddr == NULL) {
-            return (NNG_ESTATE);
-        }
-    
-        NNI_GET16(paddr, port);
+
+    if (paddr == NULL) {
+        return (NNG_ESTATE);
+    }
+
+    NNI_GET16(paddr, port);
     return (nni_copyout_int(port, buf, szp, t));
 }
 
@@ -1782,14 +1781,14 @@ udp_ep_get_locaddr(void *arg, void *v, size_t *szp, nni_opt_type t)
     udp_ep *ep = arg;
     nng_err rv;
     nng_sockaddr sa;
-    
-        if (ep->udp != NULL) {
-            (void) nng_udp_sockname(ep->udp, &sa);
-        } else {
-            sa = ep->self_sa;
-        }
-    
-        rv = nni_copyout_sockaddr(&sa, v, szp, t);
+
+    if (ep->udp != NULL) {
+        (void) nng_udp_sockname(ep->udp, &sa);
+    } else {
+        sa = ep->self_sa;
+    }
+
+    rv = nni_copyout_sockaddr(&sa, v, szp, t);
     return (rv);
 }
 
@@ -1798,8 +1797,8 @@ udp_ep_get_recvmaxsz(void *arg, void *v, size_t *szp, nni_opt_type t)
 {
     udp_ep *ep = arg;
     nng_err rv;
-    
-        nni_mtx_lock(&ep->mtx);
+
+    nni_mtx_lock(&ep->mtx);
     rv = nni_copyout_size(ep->rcvmax, v, szp, t);
     nni_mtx_unlock(&ep->mtx);
     return (rv);
@@ -1833,8 +1832,8 @@ udp_ep_get_copymax(void *arg, void *v, size_t *szp, nni_opt_type t)
 {
     udp_ep *ep = arg;
     nng_err rv;
-    
-        nni_mtx_lock(&ep->mtx);
+
+    nni_mtx_lock(&ep->mtx);
     rv = nni_copyout_size(ep->copymax, v, szp, t);
     nni_mtx_unlock(&ep->mtx);
     return (rv);
@@ -1864,8 +1863,8 @@ udp_ep_get_conn_retry(void *arg, void *v, size_t *szp, nni_opt_type t)
 {
     udp_ep *ep = arg;
     nng_err rv;
-    
-        nni_mtx_lock(&ep->mtx);
+
+    nni_mtx_lock(&ep->mtx);
     rv = nni_copyout_ms(ep->conn_retry, v, szp, t);
     nni_mtx_unlock(&ep->mtx);
     return (rv);
@@ -1877,10 +1876,10 @@ udp_ep_set_conn_retry(void *arg, const void *v, size_t sz, nni_opt_type t)
     udp_ep *ep = arg;
     nng_duration val;
     nng_err rv;
-    
-        if ((rv = nni_copyin_ms(&val, v, sz, t)) != NNG_OK) {
-            return (rv);
-        }
+
+    if ((rv = nni_copyin_ms(&val, v, sz, t)) != NNG_OK) {
+        return (rv);
+    }
     if (val <= 0) {
         return (NNG_EINVAL);
     }
@@ -1899,8 +1898,8 @@ udp_ep_get_conn_expire(void *arg, void *v, size_t *szp, nni_opt_type t)
 {
     udp_ep *ep = arg;
     nng_err rv;
-    
-        nni_mtx_lock(&ep->mtx);
+
+    nni_mtx_lock(&ep->mtx);
     rv = nni_copyout_ms(ep->conn_expire, v, szp, t);
     nni_mtx_unlock(&ep->mtx);
     return (rv);
@@ -1912,10 +1911,10 @@ udp_ep_set_conn_expire(void *arg, const void *v, size_t sz, nni_opt_type t)
     udp_ep *ep = arg;
     nng_duration val;
     nng_err rv;
-    
-        if ((rv = nni_copyin_ms(&val, v, sz, t)) != NNG_OK) {
-            return (rv);
-        }
+
+    if ((rv = nni_copyin_ms(&val, v, sz, t)) != NNG_OK) {
+        return (rv);
+    }
     if (val <= 0) {
         return (NNG_EINVAL);
     }
@@ -1934,8 +1933,8 @@ udp_ep_get_max_peers(void *arg, void *v, size_t *szp, nni_opt_type t)
 {
     udp_ep *ep = arg;
     nng_err rv;
-    
-        nni_mtx_lock(&ep->mtx);
+
+    nni_mtx_lock(&ep->mtx);
     rv = nni_copyout_size(ep->max_peers, v, szp, t);
     nni_mtx_unlock(&ep->mtx);
     return (rv);
@@ -1947,10 +1946,10 @@ udp_ep_set_max_peers(void *arg, const void *v, size_t sz, nni_opt_type t)
     udp_ep *ep = arg;
     size_t val;
     nng_err rv;
-    
-        if ((rv = nni_copyin_size(&val, v, sz, 0, UINT32_MAX, t)) != NNG_OK) {
-            return (rv);
-        }
+
+    if ((rv = nni_copyin_size(&val, v, sz, 0, UINT32_MAX, t)) != NNG_OK) {
+        return (rv);
+    }
     nni_mtx_lock(&ep->mtx);
     if (ep->started) {
         nni_mtx_unlock(&ep->mtx);
@@ -1969,12 +1968,12 @@ udp_ep_match(udp_ep *ep)
 {
     nng_aio *aio = nni_list_first(&ep->connaios);
     udp_pipe *p = nni_list_first(&ep->connpipes);
-    
-        if ((aio == NULL) || (p == NULL)) {
-            return;
-        }
-    
-        p->state = PIPE_CONN_DONE;
+
+    if ((aio == NULL) || (p == NULL)) {
+        return;
+    }
+
+    p->state = PIPE_CONN_DONE;
     nni_aio_list_remove(aio);
     nni_list_remove(&ep->connpipes, p);
     nni_aio_set_output(aio, 0, p->npipe);
@@ -1993,14 +1992,14 @@ udp_ep_bind(void *arg, nng_url *url)
 {
     udp_ep *ep = arg;
     nng_err rv;
-    
-        nni_mtx_lock(&ep->mtx);
+
+    nni_mtx_lock(&ep->mtx);
     if (ep->started) {
         nni_mtx_unlock(&ep->mtx);
         return (NNG_EBUSY);
     }
-    
-        rv = nng_udp_open(&ep->udp, &ep->self_sa);
+
+    rv = nng_udp_open(&ep->udp, &ep->self_sa);
     if (rv != NNG_OK) {
         nni_mtx_unlock(&ep->mtx);
         return (rv);
@@ -2010,16 +2009,16 @@ udp_ep_bind(void *arg, nng_url *url)
     url->u_port = nng_sockaddr_port(&sa);
     udp_ep_start(ep);
     nni_mtx_unlock(&ep->mtx);
-    
-        return (rv);
+
+    return (rv);
 }
 
 static void
 udp_ep_accept(void *arg, nni_aio *aio)
 {
     udp_ep *ep = arg;
-    
-        nni_aio_reset(aio);
+
+    nni_aio_reset(aio);
     nni_mtx_lock(&ep->mtx);
     if (ep->closed) {
         nni_mtx_unlock(&ep->mtx);
@@ -2100,8 +2099,8 @@ udp_dialer_getopt(
         void *arg, const char *name, void *buf, size_t *szp, nni_type t)
 {
     udp_ep *ep = arg;
-    
-        return (nni_getopt(udp_ep_opts, name, ep, buf, szp, t));
+
+    return (nni_getopt(udp_ep_opts, name, ep, buf, szp, t));
 }
 
 static nng_err
@@ -2109,8 +2108,8 @@ udp_dialer_setopt(
         void *arg, const char *name, const void *buf, size_t sz, nni_type t)
 {
     udp_ep *ep = arg;
-    
-        return (nni_setopt(udp_ep_opts, name, ep, buf, sz, t));
+
+    return (nni_setopt(udp_ep_opts, name, ep, buf, sz, t));
 }
 
 static nng_err
@@ -2118,8 +2117,8 @@ udp_listener_getopt(
         void *arg, const char *name, void *buf, size_t *szp, nni_type t)
 {
     udp_ep *ep = arg;
-    
-        return (nni_getopt(udp_ep_opts, name, ep, buf, szp, t));
+
+    return (nni_getopt(udp_ep_opts, name, ep, buf, szp, t));
 }
 
 static nng_err
@@ -2127,8 +2126,8 @@ udp_listener_setopt(
         void *arg, const char *name, const void *buf, size_t sz, nni_type t)
 {
     udp_ep *ep = arg;
-    
-        return (nni_setopt(udp_ep_opts, name, ep, buf, sz, t));
+
+    return (nni_setopt(udp_ep_opts, name, ep, buf, sz, t));
 }
 
 static nni_sp_dialer_ops udp_dialer_ops = {
@@ -2192,3 +2191,4 @@ nni_sp_udp_register(void)
     nni_sp_tran_register(&udp6_tran);
 #endif
 }
+
