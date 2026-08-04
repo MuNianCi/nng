@@ -735,9 +735,12 @@ udp_recv_creq(udp_ep *ep, udp_sp_msg *creq, nng_sockaddr *sa)
                 udp_send_disc(ep, p, DISC_NEGO);
                 return;
             }
-        if ((creq->us_refresh * NNI_SECOND) < p->refresh) {
-            p->refresh = creq->us_refresh * NNI_SECOND;
-        }
+        
+        nng_duration peer_refresh = creq->us_refresh * NNI_SECOND;                                                                                                              
+        if (peer_refresh > p->refresh) {   
+            p->refresh = peer_refresh;                                                                                                                                            
+        }   
+        
         p->next_wake = now + UDP_PIPE_REFRESH(p);
         p->expire = now + UDP_PIPE_TIMEOUT(p);
         
