@@ -363,6 +363,12 @@ if (NNG_TESTS)
     add_subdirectory(tests)
 endif ()
 
+if (NNG_SAMPLES)
+    #enable_samples()
+    add_subdirectory(samples)
+endif()
+
+
 #  Build the tools
 
 set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
