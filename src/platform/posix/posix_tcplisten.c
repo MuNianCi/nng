@@ -52,6 +52,10 @@ typedef struct tcp_listener {
 	bool                closed;
 	bool                nodelay;
 	bool                keepalive;
+	int                 keepidle;    // ms, 0 = not set
+	int                 keepintvl;   // ms, 0 = not set
+	int                 keepcnt;     // 0 = not set
+	int                 usertimeout; // ms, 0 = not set
 	nni_mtx             mtx;
 } tcp_listener;
 
@@ -87,8 +91,7 @@ tcp_listener_doaccept(tcp_listener *l)
 		int           newfd;
 		int           fd;
 		int           rv;
-		int           nd;
-		int           ka;
+		struct nni_tcp_opts opts;
 		nni_tcp_conn *c;
 
 		fd = nni_posix_pfd_fd(&l->pfd);
@@ -138,10 +141,20 @@ tcp_listener_doaccept(tcp_listener *l)
 			continue;
 		}
 
-		ka = l->keepalive ? 1 : 0;
-		nd = l->nodelay ? 1 : 0;
+		// Copy the tunables.  Our callers (tcp_listener_cb,
+		// tcp_listener_accept) invoke us while already holding
+		// l->mtx, so these reads are serialized against concurrent
+		// option setters.  Do NOT take the lock here: the mutex is
+		// not recursive and re-locking it deadlocks immediately.
+		opts.to_nodelay     = l->nodelay ? 1 : 0;
+		opts.to_keepalive   = l->keepalive ? 1 : 0;
+		opts.to_keepidle    = l->keepidle;
+		opts.to_keepintvl   = l->keepintvl;
+		opts.to_keepcnt     = l->keepcnt;
+		opts.to_usertimeout = l->usertimeout;
+
 		nni_aio_list_remove(aio);
-		nni_posix_tcp_start(c, nd, ka);
+		nni_posix_tcp_start(c, &opts);
 		nni_aio_set_output(aio, 0, c);
 		nni_aio_finish(aio, 0, 0);
 	}
@@ -362,6 +375,120 @@ tcp_listener_get_keepalive(void *arg, void *buf, size_t *szp, nni_type t)
 	return (nni_copyout_bool(b, buf, szp, t));
 }
 
+// Keepalive tuning parameters: durations in milliseconds (keepcnt is a
+// plain probe count).  Validation lives in nni_copyin_ms()/copyin_int(),
+// which reject everything below -1; a value of -1 is the library-wide
+// duration convention for "not set" and takes no effect downstream
+// (nni_posix_tcp_start() only issues setsockopt() for values > 0).
+static nng_err
+tcp_listener_set_keepidle(void *arg, const void *buf, size_t sz, nni_type t)
+{
+	tcp_listener      *l = arg;
+	int                rv;
+	nng_duration       dur;
+
+	if (((rv = nni_copyin_ms(&dur, buf, sz, t)) != 0) || (l == NULL)) {
+		return (rv);
+	}
+	nni_mtx_lock(&l->mtx);
+	l->keepidle = (int) dur;
+	nni_mtx_unlock(&l->mtx);
+	return (0);
+}
+
+static nng_err
+tcp_listener_get_keepidle(void *arg, void *buf, size_t *szp, nni_type t)
+{
+	nng_duration dur;
+	tcp_listener    *l = arg;
+	nni_mtx_lock(&l->mtx);
+	dur = l->keepidle;
+	nni_mtx_unlock(&l->mtx);
+	return (nni_copyout_ms(dur, buf, szp, t));
+}
+
+static nng_err
+tcp_listener_set_keepintvl(void *arg, const void *buf, size_t sz, nni_type t)
+{
+	tcp_listener      *l = arg;
+	int                rv;
+	nng_duration       dur;
+
+	if (((rv = nni_copyin_ms(&dur, buf, sz, t)) != 0) || (l == NULL)) {
+		return (rv);
+	}
+	nni_mtx_lock(&l->mtx);
+	l->keepintvl = (int) dur;
+	nni_mtx_unlock(&l->mtx);
+	return (0);
+}
+
+static nng_err
+tcp_listener_get_keepintvl(void *arg, void *buf, size_t *szp, nni_type t)
+{
+	nng_duration         dur;
+	tcp_listener    *l = arg;
+	nni_mtx_lock(&l->mtx);
+	dur = l->keepintvl;
+	nni_mtx_unlock(&l->mtx);
+	return (nni_copyout_ms(dur, buf, szp, t));
+}
+
+static nng_err
+tcp_listener_set_keepcnt(void *arg, const void *buf, size_t sz, nni_type t)
+{
+	tcp_listener *l = arg;
+	int          rv;
+	int          cnt;
+
+	rv = nni_copyin_int(&cnt, buf, sz, 0, NNI_MAXINT, t);
+	if ((rv != 0) || (l == NULL)) {
+		return (rv);
+	}
+	nni_mtx_lock(&l->mtx);
+	l->keepcnt = cnt;
+	nni_mtx_unlock(&l->mtx);
+	return (0);
+}
+
+static nng_err
+tcp_listener_get_keepcnt(void *arg, void *buf, size_t *szp, nni_type t)
+{
+	int          cnt;
+	tcp_listener *l = arg;
+	nni_mtx_lock(&l->mtx);
+	cnt = l->keepcnt;
+	nni_mtx_unlock(&l->mtx);
+	return (nni_copyout_int(cnt, buf, szp, t));
+}
+
+static nng_err
+tcp_listener_set_usertimeout(void *arg, const void *buf, size_t sz, nni_type t)
+{
+	tcp_listener      *l = arg;
+	int                rv;
+	nng_duration       dur;
+
+	if (((rv = nni_copyin_ms(&dur, buf, sz, t)) != 0) || (l == NULL)) {
+		return (rv);
+	}
+	nni_mtx_lock(&l->mtx);
+	l->usertimeout = (int) dur;
+	nni_mtx_unlock(&l->mtx);
+	return (0);
+}
+
+static nng_err
+tcp_listener_get_usertimeout(void *arg, void *buf, size_t *szp, nni_type t)
+{
+	nng_duration     dur;
+	tcp_listener    *l = arg;
+	nni_mtx_lock(&l->mtx);
+	dur = l->usertimeout;
+	nni_mtx_unlock(&l->mtx);
+	return (nni_copyout_ms(dur, buf, szp, t));
+}
+
 static nng_err
 tcp_listener_get_port(void *arg, void *buf, size_t *szp, nni_type t)
 {
@@ -474,6 +601,26 @@ static const nni_option tcp_listener_options[] = {
 #ifdef NNG_TEST_LIB
 	    .o_get = tcp_listener_get_listen_fd,
 #endif
+	},
+	{
+	    .o_name = NNG_OPT_TCP_KEEPIDLE,
+	    .o_set  = tcp_listener_set_keepidle,
+	    .o_get  = tcp_listener_get_keepidle,
+	},
+	{
+	    .o_name = NNG_OPT_TCP_KEEPINTVL,
+	    .o_set  = tcp_listener_set_keepintvl,
+	    .o_get  = tcp_listener_get_keepintvl,
+	},
+	{
+	    .o_name = NNG_OPT_TCP_KEEPCNT,
+	    .o_set  = tcp_listener_set_keepcnt,
+	    .o_get  = tcp_listener_get_keepcnt,
+	},
+	{
+	    .o_name = NNG_OPT_TCP_USER_TIMEOUT,
+	    .o_set  = tcp_listener_set_usertimeout,
+	    .o_get  = tcp_listener_get_usertimeout,
 	},
 	{
 	    .o_name = NULL,
