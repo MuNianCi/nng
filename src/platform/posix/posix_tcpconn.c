@@ -446,13 +446,45 @@ nni_posix_tcp_alloc(nni_tcp_conn **cp, nni_tcp_dialer *d, int fd)
 }
 
 void
-nni_posix_tcp_start(nni_tcp_conn *c, int nodelay, int keepalive)
+nni_posix_tcp_start(nni_tcp_conn *c,  const struct litcom_tcp_opts *opts)
 {
 	int fd = nni_posix_pfd_fd(&c->pfd);
 	// Configure the initial socket options.
-	(void) setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(int));
-	(void) setsockopt(
-	    fd, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(int));
+    (void) setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
+	    &opts->to_nodelay, sizeof(int));
+	(void) setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE,
+	    &opts->to_keepalive, sizeof(int));
+	if (opts->to_keepalive != 0) {
+#ifdef TCP_KEEPIDLE
+		if (opts->to_keepidle > 0) {
+			// ms to sec, rounding up without overflowing.
+			int sec = opts->to_keepidle / 1000 +
+			    (opts->to_keepidle % 1000 != 0);
+			(void) setsockopt(
+			    fd, IPPROTO_TCP, TCP_KEEPIDLE, &sec, sizeof(sec));
+		}
+#endif
+#ifdef TCP_KEEPINTVL
+		if (opts->to_keepintvl > 0) {
+			int sec = opts->to_keepintvl / 1000 +
+			    (opts->to_keepintvl % 1000 != 0);
+			(void) setsockopt(
+			    fd, IPPROTO_TCP, TCP_KEEPINTVL, &sec, sizeof(sec));
+		}
+#endif
+#ifdef TCP_KEEPCNT
+		if (opts->to_keepcnt > 0) {
+			(void) setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT,
+			    &opts->to_keepcnt, sizeof(opts->to_keepcnt));
+		}
+#endif
+	}
+#ifdef TCP_USER_TIMEOUT
+	if (opts->to_usertimeout > 0) {
+		(void) setsockopt(fd, IPPROTO_TCP, TCP_USER_TIMEOUT,
+		    &opts->to_usertimeout, sizeof(opts->to_usertimeout));
+	}
+#endif
 
 	struct sockaddr_storage ss;
 	socklen_t               len = sizeof(ss);
