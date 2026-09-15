@@ -33,9 +33,9 @@ struct nni_tcp_conn {
 };
 
 // TCP socket tuning options captured at dial/listen time and applied
-// to the connection in litcom_posix_tcp_start().  A value of 0 means
+// to the connection in nni_posix_tcp_start().  A value of 0 means
 // "not set": that setsockopt() is never issued.
-struct litcom_tcp_opts {
+struct nni_tcp_opts {
 	int to_nodelay;     // TCP_NODELAY on/off (0 or 1)
 	int to_keepalive;   // SO_KEEPALIVE on/off (0 or 1)
 	int to_keepidle;    // TCP_KEEPIDLE in ms (converted to sec)
@@ -45,7 +45,7 @@ struct litcom_tcp_opts {
 };
 
 extern int  nni_posix_tcp_alloc(nni_tcp_conn **, nni_tcp_dialer *, int);
-extern void nni_posix_tcp_start(nni_tcp_conn *, const struct litcom_tcp_opts *);
+extern void nni_posix_tcp_start(nni_tcp_conn *, const struct nni_tcp_opts *);
 extern void nni_posix_tcp_dialer_rele(nni_tcp_dialer *);
 extern void nni_posix_tcp_dial_cb(void *, unsigned);
 
