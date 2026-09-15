@@ -41,6 +41,10 @@ struct nni_tcp_dialer {
 	bool                    closed;
 	bool                    nodelay;
 	bool                    keepalive;
+	int                     keepidle;    // ms, 0 = not set
+	int                     keepintvl;   // ms, 0 = not set
+	int                     keepcnt;     // 0 = not set
+	int                     usertimeout; // ms, 0 = not set
 	struct sockaddr_storage src;
 	size_t                  srclen;
 	nni_mtx                 mtx;
@@ -146,8 +150,7 @@ nni_posix_tcp_dial_cb(void *arg, unsigned ev)
 	nni_tcp_dialer *d = c->dialer;
 	nni_aio        *aio;
 	int             rv;
-	int             ka;
-	int             nd;
+	struct nni_tcp_opts opts;
 
 	nni_mtx_lock(&d->mtx);
 	aio = c->dial_aio;
@@ -178,8 +181,12 @@ nni_posix_tcp_dial_cb(void *arg, unsigned ev)
 	c->dial_aio = NULL;
 	nni_aio_list_remove(aio);
 	nni_aio_set_prov_data(aio, NULL);
-	nd = d->nodelay ? 1 : 0;
-	ka = d->keepalive ? 1 : 0;
+	opts.to_nodelay     = d->nodelay ? 1 : 0;
+	opts.to_keepalive   = d->keepalive ? 1 : 0;
+	opts.to_keepidle    = d->keepidle;
+	opts.to_keepintvl   = d->keepintvl;
+	opts.to_keepcnt     = d->keepcnt;
+	opts.to_usertimeout = d->usertimeout;
 
 	nni_mtx_unlock(&d->mtx);
 
@@ -190,7 +197,7 @@ nni_posix_tcp_dial_cb(void *arg, unsigned ev)
 		return;
 	}
 
-	nni_posix_tcp_start(c, nd, ka);
+	nni_posix_tcp_start(c, &opts);
 	nni_aio_set_output(aio, 0, c);
 	nni_aio_finish(aio, 0, 0);
 }
@@ -205,8 +212,7 @@ nni_tcp_dial(nni_tcp_dialer *d, const nni_sockaddr *sa, nni_aio *aio)
 	size_t                  sslen;
 	int                     fd;
 	int                     rv;
-	int                     ka;
-	int                     nd;
+	struct nni_tcp_opts     opts;
 
 	nni_aio_reset(aio);
 
@@ -266,10 +272,14 @@ nni_tcp_dial(nni_tcp_dialer *d, const nni_sockaddr *sa, nni_aio *aio)
 	// on loop back, and probably not on every platform.
 	c->dial_aio = NULL;
 	nni_aio_set_prov_data(aio, NULL);
-	nd = d->nodelay ? 1 : 0;
-	ka = d->keepalive ? 1 : 0;
+	opts.to_nodelay     = d->nodelay ? 1 : 0;
+	opts.to_keepalive   = d->keepalive ? 1 : 0;
+	opts.to_keepidle    = d->keepidle;
+	opts.to_keepintvl   = d->keepintvl;
+	opts.to_keepcnt     = d->keepcnt;
+	opts.to_usertimeout = d->usertimeout;
 	nni_mtx_unlock(&d->mtx);
-	nni_posix_tcp_start(c, nd, ka);
+	nni_posix_tcp_start(c, &opts);
 	nni_aio_set_output(aio, 0, c);
 	nni_aio_finish(aio, 0, 0);
 	return;
@@ -310,6 +320,122 @@ tcp_dialer_get_nodelay(void *arg, void *buf, size_t *szp, nni_type t)
 	b = d->nodelay;
 	nni_mtx_unlock(&d->mtx);
 	return (nni_copyout_bool(b, buf, szp, t));
+}
+
+// Keepalive tuning parameters: durations in milliseconds
+// (keepcnt is a plain probe count).  Validation lives in
+// nni_copyin_ms()/copyin_int(), which reject everything below -1; a value
+// of -1 is the library-wide duration convention for "not set" and takes no
+// effect downstream (nni_posix_tcp_start() only issues setsockopt() 
+// for values > 0.
+static nng_err
+tcp_dialer_set_keepidle(void *arg, const void *buf, size_t sz, nniType t)
+{
+	nni_tcp_dialer *d = arg;
+	int             rv;
+	nng_duration    dur;
+
+	if (((rv = nni_copyin_ms(&dur, buf, sz, t)) != 0) || (d == NULL)) {
+		return (rv);
+	}
+	nni_mtx_lock(&d->mtx);
+	d->keepidle = (int) dur;
+	nni_mtx_unlock(&d->mtx);
+	return (0);
+}
+
+static nng_err
+tcp_dialer_get_keepidle(void *arg, void *buf, size_t *szp, nniType t)
+{
+	nng_duration    dur;
+	nni_tcp_dialer *d = arg;
+	nni_mtx_lock(&d->mtx);
+	dur = d->keepidle;
+	nni_mtx_unlock(&d->mtx);
+	return (nni_copyout_ms(dur, buf, szp, t));
+}
+
+static nng_err
+tcp_dialer_set_keepintvl(void *arg, const void *buf, size_t sz, nniType t)
+{
+	nni_tcp_dialer *d = arg;
+	int             rv;
+	nng_duration   dur;
+
+	if (((rv = nni_copyin_ms(&dur, buf, sz, t)) != 0) || (d == NULL)) {
+		return (rv);
+	}
+	nni_mtx_lock(&d->mtx);
+	d->keepintvl = (int) dur;
+	nni_mtx_unlock(&d->mtx);
+	return (0);
+}
+
+static nng_err
+tcp_dialer_get_keepintvl(void *arg, void *buf, size_t *szp, nniType t)
+{
+	nng_duration    dur;
+	nni_tcp_dialer *d = arg;
+	nni_mtx_lock(&d->mtx);
+	dur = d->keepintvl;
+	nni_mtx_unlock(&d->mtx);
+	return (nni_copyout_ms(dur, buf, szp, t));
+}
+
+
+static nng_err
+tcp_dialer_set_keepcnt(void *arg, const void *buf, size_t sz, nniType t)
+{
+	nni_tcp_dialer *d = arg;
+	int             rv;
+	int             cnt;
+
+	rv = nni_copyin_int(&cnt, buf, sz, 0, NNI_MAXINT, t);
+	if ((rv != 0) || (d == NULL)) {
+		return (rv);
+	}
+	nni_mtx_lock(&d->mtx);
+	d->keepcnt = cnt;
+	nni_mtx_unlock(&d->mtx);
+	return (0);
+}
+
+static nng_err
+tcp_dialer_get_keepcnt(void *arg, void *buf, size_t *szp, nniType t)
+{
+	int             cnt;
+	nni_tcp_dialer *d = arg;
+	nni_mtx_lock(&d->mtx);
+	cnt = d->keepcnt;
+	nni_mtx_unlock(&d->mtx);
+	return (nni_copyout_int(cnt, buf, szp, t));
+}
+
+static nng_err
+tcp_dialer_set_usertimeout(void *arg, const void *buf, size_t sz, nniType t)
+{
+	nni_tcp_dialer *d = arg;
+	int             rv;
+	nng_duration    dur;
+
+	if (((rv = nni_copyin_ms(&dur, buf, sz, t)) != 0) || (d == NULL)) {
+		return (rv);
+	}
+	nni_mtx_lock(&d->mtx);
+	d->usertimeout = (int) dur;
+	nni_mtx_unlock(&d->mtx);
+	return (0);
+}
+
+static nng_err
+tcp_dialer_get_usertimeout(void *arg, void *buf, size_t *szp, nniType t)
+{
+	nng_duration    dur;
+	nni_tcp_dialer *d = arg;
+	nni_mtx_lock(&d->mtx);
+	dur = d->usertimeout;
+	nni_mtx_unlock(&d->mtx);
+	return (nni_copyout_ms(dur, buf, szp, t));
 }
 
 static nng_err
@@ -409,6 +535,26 @@ static const nni_option tcp_dialer_options[] = {
 	    .o_name = NNG_OPT_TCP_KEEPALIVE,
 	    .o_get  = tcp_dialer_get_keepalive,
 	    .o_set  = tcp_dialer_set_keepalive,
+	},
+	{
+	    .o_name = NNG_OPT_TCP_KEEPIDLE,
+	    .o_get  = tcp_dialer_get_keepidle,
+	    .o_set  = tcp_dialer_set_keepidle,
+	},
+	{
+	    .o_name = NNG_OPT_TCP_KEEPINTVL,
+	    .o_get  = tcp_dialer_get_keepintvl,
+	    .o_set  = tcp_dialer_set_keepintvl,
+	},
+	{
+	    .o_name = NNG_OPT_TCP_KEEPCNT,
+	    .o_get  = tcp_dialer_get_keepcnt,
+	    .o_set  = tcp_dialer_set_keepcnt,
+	},
+	{
+	    .o_name = NNG_OPT_TCP_USER_TIMEOUT,
+	    .o_get  = tcp_dialer_get_usertimeout,
+	    .o_set  = tcp_dialer_set_usertimeout,
 	},
 	{
 	    .o_name = NULL,
