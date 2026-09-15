@@ -842,6 +842,15 @@ NNG_DECL nng_listener nng_pipe_listener(nng_pipe);
 // state current). This is a boolean.
 #define NNG_OPT_TCP_KEEPALIVE "tcp-keepalive"
 
+// TCP keepalive tuning parameters.  All default to 0 which means
+// "not set" -- the socket option is simply never issued, preserving
+// existing behavior.  Only effective when tcp-keepalive is enabled.
+// Durations are in milliseconds (internally converted per platform).
+#define NNG_OPT_TCP_KEEPIDLE     "tcp-keepidle"
+#define NNG_OPT_TCP_KEEPINTVL    "tcp-keepintvl"
+#define NNG_OPT_TCP_KEEPCNT      "tcp-keepcnt"
+#define NNG_OPT_TCP_USER_TIMEOUT "tcp-user-timeout"
+
 // Local TCP or UDP port number.  This is used on a listener, and is intended
 // to be used after starting the listener in combination with a wildcard
 // (0) local port.  This determines the actual ephemeral port that was
